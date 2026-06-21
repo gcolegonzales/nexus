@@ -1,6 +1,6 @@
 import { getItem, setItem } from "@/core/storage/db";
 import { STORAGE_KEYS } from "@/core/storage/keys";
-import { migrateStateIfNeeded } from "@/tools/room-coat/lib/migrate-state";
+import { migrateStateIfNeeded, ensureMinimumState } from "@/tools/room-coat/lib/migrate-state";
 import {
   CURRENT_ROOM_COAT_SCHEMA_VERSION,
   DEFAULT_ROOM_COAT,
@@ -334,8 +334,18 @@ function normalizeState(raw: unknown): RoomCoatState {
 
 export async function loadRoomCoat(): Promise<RoomCoatState> {
   const raw = await getItem<unknown>(STORAGE_KEYS.roomCoat);
-  if (!raw) return { ...DEFAULT_ROOM_COAT_STATE };
-  return normalizeState(raw);
+  if (!raw) {
+    const fresh = ensureMinimumState({ ...DEFAULT_ROOM_COAT_STATE });
+    await saveRoomCoat(fresh);
+    return fresh;
+  }
+  const loaded = normalizeState(raw);
+  if (loaded.units.length === 0) {
+    const fresh = ensureMinimumState(loaded);
+    await saveRoomCoat(fresh);
+    return fresh;
+  }
+  return loaded;
 }
 
 export async function saveRoomCoat(state: RoomCoatState): Promise<void> {

@@ -10,7 +10,8 @@ import type {
 
 export function getActiveUnit(state: RoomCoatState): HomeUnit | null {
   if (state.activeUnitId) {
-    return state.units.find((unit) => unit.id === state.activeUnitId) ?? null;
+    const match = state.units.find((unit) => unit.id === state.activeUnitId);
+    if (match) return match;
   }
   return state.units[0] ?? null;
 }

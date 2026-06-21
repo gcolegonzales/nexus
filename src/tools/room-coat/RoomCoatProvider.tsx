@@ -16,6 +16,7 @@ import { wallCenter } from "@/tools/room-coat/lib/unit-layout";
 import {
   createDefaultUnit,
   defaultHallwayName,
+  ensureMinimumState,
   nextRoomOrigin,
 } from "@/tools/room-coat/lib/migrate-state";
 import {
@@ -43,7 +44,7 @@ import type {
   UnitPreference,
   WallSide,
 } from "@/tools/room-coat/types/state";
-import { DEFAULT_ROOM_COAT } from "@/tools/room-coat/types/state";
+import { DEFAULT_ROOM_COAT, DEFAULT_ROOM_COAT_STATE } from "@/tools/room-coat/types/state";
 
 interface RoomCoatContextValue {
   state: RoomCoatState;
@@ -189,10 +190,22 @@ export function RoomCoatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    await ensureSchemaVersion();
-    const loaded = await loadRoomCoat();
-    setState(loaded);
-    setIsReady(true);
+    try {
+      await ensureSchemaVersion();
+      const loaded = await loadRoomCoat();
+      setState(loaded);
+    } catch (error) {
+      console.error("Failed to load Room Coat state", error);
+      const fresh = ensureMinimumState({ ...DEFAULT_ROOM_COAT_STATE });
+      setState(fresh);
+      try {
+        await saveRoomCoat(fresh);
+      } catch (saveError) {
+        console.error("Failed to persist fallback Room Coat state", saveError);
+      }
+    } finally {
+      setIsReady(true);
+    }
   }, []);
 
   useEffect(() => {
