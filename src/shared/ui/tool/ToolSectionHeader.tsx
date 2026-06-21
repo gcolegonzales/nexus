@@ -21,7 +21,7 @@ export function ToolSectionHeader({
   if (!title && !description && !hasActions) return null;
 
   return (
-    <StaggerItem className="mb-5">
+    <StaggerItem className="relative z-30 mb-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           {title && (
@@ -36,7 +36,7 @@ export function ToolSectionHeader({
           )}
         </div>
         {hasActions && (
-          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+          <div className="relative z-30 flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
             {action}
             {headerActions}
           </div>

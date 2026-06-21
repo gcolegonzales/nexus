@@ -39,7 +39,7 @@ export function EditorSettingsPopover() {
   }
 
   return (
-    <div ref={rootRef} className="pointer-events-auto relative">
+    <div ref={rootRef} className={`pointer-events-auto relative ${open ? "z-20" : "z-10"}`}>
       <button
         type="button"
         aria-expanded={open}

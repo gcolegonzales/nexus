@@ -46,7 +46,10 @@ export function EditorInventory({
   if (count === 0) return null;
 
   return (
-    <div ref={rootRef} className="pointer-events-auto absolute bottom-2.5 right-2.5 z-10">
+    <div
+      ref={rootRef}
+      className={`pointer-events-auto absolute bottom-2.5 right-2.5 ${open ? "z-20" : "z-10"}`}
+    >
       <button
         type="button"
         aria-expanded={open}

@@ -39,7 +39,7 @@ export function UnitSwitcher() {
   return (
     <>
       <div ref={rootRef} className="inline-flex items-stretch">
-        <div className="relative">
+        <div className={`relative ${open ? "z-50" : ""}`}>
           <button
             type="button"
             aria-expanded={open}
