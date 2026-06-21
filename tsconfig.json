@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@nexus/ui": ["./packages/ui/src/index.ts"],
+      "@nexus/next": ["./packages/next/src/index.ts"]
     }
   },
   "include": [
