@@ -46,6 +46,14 @@ import type {
 } from "@/tools/room-coat/types/state";
 import { DEFAULT_ROOM_COAT, DEFAULT_ROOM_COAT_STATE } from "@/tools/room-coat/types/state";
 
+export interface AddRoomInput {
+  name: string;
+  widthMm?: number;
+  lengthMm?: number;
+  heightMm?: number;
+  wallPaintId?: string | null;
+}
+
 interface RoomCoatContextValue {
   state: RoomCoatState;
   activeUnit: HomeUnit;
@@ -65,7 +73,7 @@ interface RoomCoatContextValue {
   updateUnit: (unitId: string, patch: Partial<HomeUnit>) => Promise<void>;
   deleteUnit: (unitId: string) => Promise<void>;
   setActiveUnitId: (unitId: string) => Promise<void>;
-  addRoom: (name: string) => Promise<string>;
+  addRoom: (input: AddRoomInput) => Promise<string>;
   updateRoom: (
     roomId: string,
     patch: Partial<Pick<Room, "name" | "widthMm" | "lengthMm" | "heightMm">>,
@@ -402,23 +410,62 @@ export function RoomCoatProvider({ children }: { children: ReactNode }) {
   );
 
   const addRoom = useCallback(
-    async (name: string) => {
+    async (input: AddRoomInput) => {
       let roomId = "";
       await mutate((current) => {
-        const dims = defaultRoomDimensionsMm();
+        const defaults = defaultRoomDimensionsMm();
         const room: Room = {
           id: createId(),
-          name: name.trim() || "New room",
-          ...dims,
+          name: input.name.trim() || "New room",
+          widthMm: Math.max(300, Math.round(input.widthMm ?? defaults.widthMm)),
+          lengthMm: Math.max(300, Math.round(input.lengthMm ?? defaults.lengthMm)),
+          heightMm: Math.max(300, Math.round(input.heightMm ?? defaults.heightMm)),
           doors: [],
         };
         roomId = room.id;
-        return { ...current, rooms: [...current.rooms, room] };
+
+        const targetUnitId = current.activeUnitId ?? current.units[0]?.id;
+        if (!targetUnitId) {
+          return { ...current, rooms: [...current.rooms, room] };
+        }
+
+        const alreadyAttached = current.placements.some(
+          (placement) =>
+            placement.unitId === targetUnitId && placement.roomId === room.id,
+        );
+
+        const nextPlacements = alreadyAttached
+          ? current.placements
+          : [
+              ...current.placements,
+              {
+                id: createId(),
+                unitId: targetUnitId,
+                roomId: room.id,
+                ...nextRoomOrigin(
+                  targetUnitId,
+                  current.placements,
+                  [...current.rooms, room],
+                ),
+                coat: {
+                  ...DEFAULT_ROOM_COAT,
+                  wallPaintId: input.wallPaintId ?? null,
+                },
+                surfaceOverrides: {},
+                wallOpenings: [],
+              },
+            ];
+
+        return {
+          ...current,
+          rooms: [...current.rooms, room],
+          placements: nextPlacements,
+          activeUnitId: targetUnitId,
+        };
       });
-      await attachRoomToUnit(roomId);
       return roomId;
     },
-    [mutate, attachRoomToUnit],
+    [mutate],
   );
 
   const updateRoom = useCallback(

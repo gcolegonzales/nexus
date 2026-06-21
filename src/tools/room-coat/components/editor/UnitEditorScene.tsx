@@ -22,6 +22,10 @@ import {
 } from "@/tools/room-coat/components/editor/HallwayDraftVisuals";
 import { useUnitEditor } from "@/tools/room-coat/components/editor/UnitEditorContext";
 import { WallSurfaceLabels } from "@/tools/room-coat/components/editor/WallSurfaceLabels";
+import {
+  HallwayFloorLabel,
+  RoomFloorLabel,
+} from "@/tools/room-coat/components/editor/FloorSpaceLabels";
 
 const MM_TO_M = 0.001;
 
@@ -219,6 +223,7 @@ function UnitEditorSceneInner() {
                 void moveRoom(room.placementId, xMm, zMm);
               }}
             />
+            <RoomFloorLabel room={room} worldOffset={displayOffset} />
             {state.viewSettings.showWallLabels && (
               <WallSurfaceLabels
                 specs={specs}
@@ -260,6 +265,7 @@ function UnitEditorSceneInner() {
               setWallHover(hit ? { xMm: hit.xMm, zMm: hit.zMm } : null);
             }}
           />
+          <HallwayFloorLabel hallway={hallway} />
           {state.viewSettings.showWallLabels && (
             <WallSurfaceLabels
               specs={specs}

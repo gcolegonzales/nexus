@@ -5,21 +5,12 @@ import { useMemo, useRef, useState } from "react";
 import { useRoomCoat } from "@/tools/room-coat/RoomCoatProvider";
 import {
   canCompleteHallwayDraft,
-  draftDisplayPath,
 } from "@/tools/room-coat/lib/hallway-draft";
 import { formatArea, formatMm, totalAreaLabel } from "@/tools/room-coat/lib/units";
-import {
-  hallwayLastSegmentLengthMm,
-  hallwayPathLengthMm,
-  hallwaySegmentLengthMm,
-  unitTotalFloorAreaMm2,
-} from "@/tools/room-coat/lib/surface-measurements";
+import { unitTotalFloorAreaMm2 } from "@/tools/room-coat/lib/surface-measurements";
 import { EditorCompactDimension } from "@/tools/room-coat/components/editor/EditorCompactDimension";
 import { EditorInventory } from "@/tools/room-coat/components/editor/EditorInventory";
-import {
-  EditorMeasurementReadout,
-  type EditorHallwayMeasurement,
-} from "@/tools/room-coat/components/editor/EditorMeasurementReadout";
+import { EditorMeasurementReadout } from "@/tools/room-coat/components/editor/EditorMeasurementReadout";
 import { EditorFullscreenToggle } from "@/tools/room-coat/components/editor/EditorFullscreenToggle";
 import { EditorToolbar } from "@/tools/room-coat/components/editor/EditorToolbar";
 import { EditorSettingsPopover } from "@/tools/room-coat/components/editor/EditorSettingsPopover";
@@ -44,7 +35,7 @@ const UnitEditorScene = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full min-h-[420px] items-center justify-center bg-slate-950 text-sm text-slate-400">
+      <div className="flex h-full min-h-[480px] items-center justify-center bg-slate-950 text-sm text-slate-400">
         Loading editor…
       </div>
     ),
@@ -74,7 +65,6 @@ function UnitEditorBody() {
     resetHallwayDraft,
     cancelTool,
     focusRoomFromInventory,
-    hoverMeasurement,
   } = useUnitEditor();
 
   const available = getAvailableRoomsForUnit(activeUnit.id);
@@ -88,45 +78,6 @@ function UnitEditorBody() {
     activeHallways,
     hallwayDraft,
   );
-
-  const hallwayMeasurement = useMemo((): EditorHallwayMeasurement | null => {
-    if (tool !== "hallway" || hallwayDraft.phase === "idle") return null;
-
-    const path = draftDisplayPath(
-      activePlacedRooms,
-      activeHallways,
-      hallwayDraft,
-    );
-    const unit = state.unitPreference;
-    const width = formatMm(hallwayDraft.widthMm, unit);
-    if (path.length < 2 && !hallwayDraft.preview) {
-      return { width, length: "—", segment: undefined };
-    }
-
-    const length = formatMm(hallwayPathLengthMm(path), unit);
-
-    let segment: string | undefined;
-    if (hallwayDraft.preview && path.length >= 1) {
-      const anchor = path[path.length - 1];
-      const dx = Math.abs(hallwayDraft.preview.xMm - anchor.xMm);
-      const dz = Math.abs(hallwayDraft.preview.zMm - anchor.zMm);
-      const aligned =
-        dx >= dz
-          ? { xMm: hallwayDraft.preview.xMm, zMm: anchor.zMm }
-          : { xMm: anchor.xMm, zMm: hallwayDraft.preview.zMm };
-      segment = formatMm(hallwaySegmentLengthMm(anchor, aligned), unit);
-    } else if (path.length >= 2) {
-      segment = formatMm(hallwayLastSegmentLengthMm(path), unit);
-    }
-
-    return { width, length, segment };
-  }, [
-    activeHallways,
-    activePlacedRooms,
-    hallwayDraft,
-    state.unitPreference,
-    tool,
-  ]);
 
   const totalFloorArea = useMemo(() => {
     const areaMm2 = unitTotalFloorAreaMm2(activePlacedRooms, activeHallways);
@@ -211,7 +162,7 @@ function UnitEditorBody() {
     <Card className="overflow-hidden p-0">
       <div
         ref={viewportRef}
-        className={`relative h-[min(72vh,640px)] min-h-[420px] bg-slate-950 [&:fullscreen]:h-full [&:fullscreen]:min-h-0 ${
+        className={`relative h-[min(80vh,720px)] min-h-[480px] bg-slate-950 [&:fullscreen]:h-full [&:fullscreen]:min-h-0 ${
           tool !== "paint" ? "ring-2 ring-inset ring-sky-500/20" : ""
         }`}
         data-fullscreen="false"
@@ -238,8 +189,6 @@ function UnitEditorBody() {
           <EditorMeasurementReadout
             totalAreaLabel={totalAreaLabel(state.unitPreference)}
             totalArea={totalFloorArea}
-            hover={hoverMeasurement}
-            hallway={hallwayMeasurement}
           />
         </div>
 
@@ -271,7 +220,7 @@ function UnitEditorBody() {
 
         {tool === "hallway" && activePlacedRooms.length > 0 && (
           <div
-            className={`pointer-events-none absolute bottom-24 left-2.5 max-w-[min(calc(100%-120px),420px)] rounded-lg px-2.5 py-1.5 text-[11px] leading-snug ${EDITOR_CHROME} ${EDITOR_CHROME_MUTED}`}
+            className={`pointer-events-none absolute bottom-12 left-2.5 max-w-[min(calc(100%-120px),420px)] rounded-lg px-2.5 py-1.5 text-[11px] leading-snug ${EDITOR_CHROME} ${EDITOR_CHROME_MUTED}`}
           >
             Gold slide · cyan width · purple start · green confirm · Ctrl+Z · Esc
           </div>
