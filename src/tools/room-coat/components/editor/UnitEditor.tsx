@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRoomCoat } from "@/tools/room-coat/RoomCoatProvider";
 import {
   canCompleteHallwayDraft,
@@ -20,6 +20,7 @@ import {
   EditorMeasurementReadout,
   type EditorHallwayMeasurement,
 } from "@/tools/room-coat/components/editor/EditorMeasurementReadout";
+import { EditorFullscreenToggle } from "@/tools/room-coat/components/editor/EditorFullscreenToggle";
 import { EditorToolbar } from "@/tools/room-coat/components/editor/EditorToolbar";
 import { EditorSettingsPopover } from "@/tools/room-coat/components/editor/EditorSettingsPopover";
 import {
@@ -77,6 +78,7 @@ function UnitEditorBody() {
   } = useUnitEditor();
 
   const available = getAvailableRoomsForUnit(activeUnit.id);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const [selectedRoomId, setSelectedRoomId] = useState<string>(
     () => available[0]?.id ?? "",
   );
@@ -208,9 +210,11 @@ function UnitEditorBody() {
   return (
     <Card className="overflow-hidden p-0">
       <div
-        className={`relative h-[min(72vh,640px)] min-h-[420px] bg-slate-950 ${
+        ref={viewportRef}
+        className={`relative h-[min(72vh,640px)] min-h-[420px] bg-slate-950 [&:fullscreen]:h-full [&:fullscreen]:min-h-0 ${
           tool !== "paint" ? "ring-2 ring-inset ring-sky-500/20" : ""
         }`}
+        data-fullscreen="false"
       >
         <UnitEditorScene />
 
@@ -223,8 +227,14 @@ function UnitEditorBody() {
           {contextualPanel}
         </EditorToolbar>
 
-        <div className="pointer-events-none absolute right-2 top-2 z-10 flex flex-col items-end gap-1.5">
+        <div className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1.5">
+          <div className="pointer-events-auto">
+            <EditorFullscreenToggle containerRef={viewportRef} />
+          </div>
           <EditorSettingsPopover />
+        </div>
+
+        <div className="pointer-events-none absolute bottom-2.5 left-2.5 z-10 max-w-[min(calc(100%-5rem),280px)]">
           <EditorMeasurementReadout
             totalAreaLabel={totalAreaLabel(state.unitPreference)}
             totalArea={totalFloorArea}
@@ -261,7 +271,7 @@ function UnitEditorBody() {
 
         {tool === "hallway" && activePlacedRooms.length > 0 && (
           <div
-            className={`pointer-events-none absolute bottom-3 left-3 max-w-[min(calc(100%-120px),420px)] rounded-lg px-2.5 py-1.5 text-[11px] leading-snug ${EDITOR_CHROME} ${EDITOR_CHROME_MUTED}`}
+            className={`pointer-events-none absolute bottom-24 left-2.5 max-w-[min(calc(100%-120px),420px)] rounded-lg px-2.5 py-1.5 text-[11px] leading-snug ${EDITOR_CHROME} ${EDITOR_CHROME_MUTED}`}
           >
             Gold slide · cyan width · purple start · green confirm · Ctrl+Z · Esc
           </div>
