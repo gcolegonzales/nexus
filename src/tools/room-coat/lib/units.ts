@@ -70,15 +70,15 @@ export function totalAreaLabel(unit: UnitPreference): string {
 export function formatArea(areaMm2: number, unit: UnitPreference): string {
   if (unit === "metric") {
     const sqM = areaMm2 / SQ_MM_PER_SQ_M;
+    const showDecimal = sqM > 0 && sqM < 10;
     return `${sqM.toLocaleString(undefined, {
-      minimumFractionDigits: sqM < 10 ? 1 : 0,
+      minimumFractionDigits: showDecimal ? 1 : 0,
       maximumFractionDigits: 1,
     })} m²`;
   }
 
   const sqFt = areaMm2 / SQ_MM_PER_SQ_FT;
-  return `${sqFt.toLocaleString(undefined, {
-    minimumFractionDigits: sqFt < 10 ? 1 : 0,
+  return `${Math.round(sqFt).toLocaleString(undefined, {
     maximumFractionDigits: 0,
   })} sq ft`;
 }
