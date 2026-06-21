@@ -65,6 +65,7 @@ function UnitEditorBody() {
     resetHallwayDraft,
     cancelTool,
     focusRoomFromInventory,
+    hoverMeasurement,
   } = useUnitEditor();
 
   const available = getAvailableRoomsForUnit(activeUnit.id);
@@ -189,6 +190,7 @@ function UnitEditorBody() {
           <EditorMeasurementReadout
             totalAreaLabel={totalAreaLabel(state.unitPreference)}
             totalArea={totalFloorArea}
+            hover={hoverMeasurement}
           />
         </div>
 

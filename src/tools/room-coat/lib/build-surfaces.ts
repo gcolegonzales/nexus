@@ -5,16 +5,21 @@ import type {
   WallSide,
 } from "@/tools/room-coat/types/state";
 import { solidHallwayWallSegments } from "@/tools/room-coat/lib/hallway-openings";
+import {
+  hallwayCornerCeilingLabel,
+  hallwaySegmentCeilingLabel,
+  hallwaySegmentWallLabel,
+  roomCeilingSurfaceLabel,
+  roomDoorSurfaceLabel,
+  roomWallSurfaceLabel,
+  surfaceCategoryTitle,
+  WALL_LABELS,
+} from "@/tools/room-coat/lib/surface-display-labels";
 import { solidWallSegments } from "@/tools/room-coat/lib/wall-openings";
 
-const WALL_LABELS: Record<WallSide, string> = {
-  north: "North wall",
-  south: "South wall",
-  east: "East wall",
-  west: "West wall",
-};
-
 const WALL_SIDES: WallSide[] = ["north", "south", "east", "west"];
+
+export { WALL_LABELS };
 
 export function buildSurfacesForPlacedRoom(room: PlacedRoom): SurfaceDescriptor[] {
   const id = room.placementId;
@@ -23,21 +28,19 @@ export function buildSurfacesForPlacedRoom(room: PlacedRoom): SurfaceDescriptor[
   for (const wall of WALL_SIDES) {
     const segments = solidWallSegments(room, wall);
     segments.forEach((segment, segIndex) => {
-      const partial =
+      const hasPartial =
         segments.length > 1 || room.wallOpenings.some((o) => o.wall === wall);
       surfaces.push({
         id: `${id}:wall:${wall}:${segIndex}`,
         roomId: id,
         category: "wall",
-        label: partial
-          ? `${room.name} — ${WALL_LABELS[wall].toLowerCase()} (section ${segIndex + 1})`
-          : `${room.name} — ${WALL_LABELS[wall].toLowerCase()}`,
+        label: roomWallSurfaceLabel(room.name, wall, segIndex, hasPartial),
       });
       surfaces.push({
         id: `${id}:baseboard:${wall}:${segIndex}`,
         roomId: id,
         category: "baseboard",
-        label: `${room.name} — ${WALL_LABELS[wall].toLowerCase()} baseboard`,
+        label: surfaceCategoryTitle("baseboard"),
       });
     });
   }
@@ -46,7 +49,7 @@ export function buildSurfacesForPlacedRoom(room: PlacedRoom): SurfaceDescriptor[
     id: `${id}:ceiling`,
     roomId: id,
     category: "ceiling",
-    label: `${room.name} — ceiling`,
+    label: roomCeilingSurfaceLabel(room.name),
   });
 
   for (const door of room.doors) {
@@ -54,7 +57,7 @@ export function buildSurfacesForPlacedRoom(room: PlacedRoom): SurfaceDescriptor[
       id: `${id}:door:${door.id}`,
       roomId: id,
       category: "door",
-      label: `${room.name} — door (${WALL_LABELS[door.wall].toLowerCase()})`,
+      label: roomDoorSurfaceLabel(room.name, door.wall),
       doorId: door.id,
     });
   }
@@ -75,13 +78,13 @@ export function buildSurfacesForHallway(hallway: Hallway): SurfaceDescriptor[] {
           id: `${prefix}:wall:${side}${partSuffix}`,
           hallwayId: hallway.id,
           category: "wall",
-          label: `${hallway.name} — segment ${i + 1} wall ${side + 1}`,
+          label: hallwaySegmentWallLabel(hallway.name, i, side),
         });
         surfaces.push({
           id: `${prefix}:baseboard:${side}${partSuffix}`,
           hallwayId: hallway.id,
           category: "baseboard",
-          label: `${hallway.name} — segment ${i + 1} baseboard ${side + 1}`,
+          label: surfaceCategoryTitle("baseboard"),
         });
       });
     }
@@ -89,7 +92,7 @@ export function buildSurfacesForHallway(hallway: Hallway): SurfaceDescriptor[] {
       id: `${prefix}:ceiling`,
       hallwayId: hallway.id,
       category: "ceiling",
-      label: `${hallway.name} — segment ${i + 1} ceiling`,
+      label: hallwaySegmentCeilingLabel(hallway.name, i),
     });
   }
 
@@ -99,7 +102,7 @@ export function buildSurfacesForHallway(hallway: Hallway): SurfaceDescriptor[] {
       id: `${prefix}:ceiling`,
       hallwayId: hallway.id,
       category: "ceiling",
-      label: `${hallway.name} — corner ${i} ceiling`,
+      label: hallwayCornerCeilingLabel(hallway.name, i),
     });
   }
 

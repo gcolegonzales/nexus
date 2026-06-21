@@ -2,6 +2,7 @@
 
 import { findSurfaceInUnit } from "@/tools/room-coat/lib/build-surfaces";
 import { paintSourceLabel } from "@/tools/room-coat/lib/coat-labels";
+import { surfaceCategoryTitle } from "@/tools/room-coat/lib/surface-display-labels";
 import {
   formatPaintLabel,
   resolveSurfacePaint,
@@ -64,9 +65,9 @@ export function SurfaceInspector() {
     <Card className="w-full space-y-4">
       <div>
         <h3 className="text-lg font-semibold text-text">{surface.label}</h3>
-        <p className="mt-1 text-sm capitalize text-muted">
-          {surface.category}
-          {kind === "hallway" ? " · hallway" : ""}
+        <p className="mt-1 text-sm text-muted">
+          {surfaceCategoryTitle(surface.category)}
+          {kind === "hallway" ? " · Hallway" : ""}
         </p>
       </div>
 

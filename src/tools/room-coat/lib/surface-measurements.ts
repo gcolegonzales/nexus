@@ -4,6 +4,19 @@ import {
   parseRoomWallSurfaceId,
 } from "@/tools/room-coat/lib/editor-surfaces";
 import type { SurfaceMeshSpec } from "@/tools/room-coat/lib/room-geometry";
+import {
+  hallwayCornerCeilingLabel,
+  hallwayCornerSurfaceLabel,
+  hallwaySegmentCeilingLabel,
+  hallwaySegmentFloorLabel,
+  hallwaySegmentWallLabel,
+  meshCategoryTitle,
+  roomCeilingSurfaceLabel,
+  roomDoorSurfaceLabel,
+  roomFloorSurfaceLabel,
+  roomWallSurfaceLabel,
+  surfaceCategoryTitle,
+} from "@/tools/room-coat/lib/surface-display-labels";
 import { formatArea, formatMm } from "@/tools/room-coat/lib/units";
 import type {
   Hallway,
@@ -89,22 +102,25 @@ function resolveSurfaceTitle(
   if ("placementId" in space) {
     switch (spec.category) {
       case "floor":
-        return `${space.name} — floor`;
+        return roomFloorSurfaceLabel(space.name);
       case "ceiling":
-        return `${space.name} — ceiling`;
+        return roomCeilingSurfaceLabel(space.name);
       case "door":
-        return `${space.name} — door`;
-      case "wall":
-      case "baseboard": {
+        return surfaceCategoryTitle("door");
+      case "baseboard":
+        return surfaceCategoryTitle("baseboard");
+      case "wall": {
         const parsed = parseRoomWallSurfaceId(spec.surfaceId);
-        if (!parsed) return `${space.name} — ${spec.category}`;
-        const wallName =
-          parsed.wall.charAt(0).toUpperCase() + parsed.wall.slice(1);
-        const partial = parsed.segIndex > 0 ? ` (section ${parsed.segIndex + 1})` : "";
-        return `${space.name} — ${wallName.toLowerCase()} wall${partial}`;
+        if (!parsed) return surfaceCategoryTitle("wall");
+        return roomWallSurfaceLabel(
+          space.name,
+          parsed.wall,
+          parsed.segIndex,
+          parsed.segIndex > 0,
+        );
       }
       default:
-        return `${space.name} — ${spec.category}`;
+        return surfaceCategoryTitle(spec.category);
     }
   }
 
@@ -112,28 +128,47 @@ function resolveSurfaceTitle(
   const parsed = parseHallwaySurfaceId(spec.surfaceId);
   if (parsed) {
     if (parsed.category === "wall") {
-      return `${hallway.name} — segment ${parsed.segIndex + 1} wall ${parsed.sideIndex + 1}`;
+      return hallwaySegmentWallLabel(
+        hallway.name,
+        parsed.segIndex,
+        parsed.sideIndex,
+      );
     }
     if (parsed.category === "baseboard") {
-      return `${hallway.name} — segment ${parsed.segIndex + 1} baseboard ${parsed.sideIndex + 1}`;
+      return surfaceCategoryTitle("baseboard");
     }
     if (parsed.category === "ceiling") {
-      return `${hallway.name} — segment ${parsed.segIndex + 1} ceiling`;
+      return hallwaySegmentCeilingLabel(hallway.name, parsed.segIndex);
     }
   }
 
   if (spec.category === "floor" || spec.category === "ceiling") {
     const corner = parseHallwayCornerSurfaceId(spec.surfaceId);
     if (corner) {
-      return `${hallway.name} — corner ${corner.cornerIndex} ${spec.category}`;
+      return hallwayCornerSurfaceLabel(
+        hallway.name,
+        corner.cornerIndex,
+        spec.category,
+      );
     }
     const segMatch = spec.surfaceId.match(/:seg:(\d+):(floor|ceiling)$/);
     if (segMatch) {
-      return `${hallway.name} — segment ${Number(segMatch[1]) + 1} ${segMatch[2]}`;
+      const segIndex = Number(segMatch[1]);
+      if (segMatch[2] === "floor") {
+        return hallwaySegmentFloorLabel(hallway.name, segIndex);
+      }
+      return hallwaySegmentCeilingLabel(hallway.name, segIndex);
     }
   }
 
-  return `${hallway.name} — ${spec.category}`;
+  if (spec.category === "ceiling") {
+    const corner = parseHallwayCornerSurfaceId(spec.surfaceId);
+    if (corner) {
+      return hallwayCornerCeilingLabel(hallway.name, corner.cornerIndex);
+    }
+  }
+
+  return meshCategoryTitle(spec.category);
 }
 
 export function formatSurfaceMeasurement(
@@ -162,15 +197,15 @@ export function surfaceMeasurementCaption(
 ): string {
   switch (category) {
     case "wall":
-      return "Length × height";
+      return "Length × Height";
     case "baseboard":
       return "Length";
     case "floor":
-      return "Width × length · area";
+      return "Width × Length · Area";
     case "ceiling":
-      return "Width × length · area";
+      return "Width × Length · Area";
     case "door":
-      return "Width × height";
+      return "Width × Height";
     default:
       return "Dimensions";
   }
