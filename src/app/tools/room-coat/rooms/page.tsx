@@ -2,15 +2,14 @@
 
 import { useState } from "react";
 import { useRoomCoat } from "@/tools/room-coat/RoomCoatProvider";
+import { RoomCatalogCard } from "@/tools/room-coat/components/RoomCatalogCard";
 import { ToolSection } from "@/tools/room-coat/components/ToolSection";
-import { formatMm } from "@/tools/room-coat/lib/units";
 import { getUnitName } from "@/tools/room-coat/lib/unit-scope";
-import { Card } from "@nexus/ui";
-import { Button, PrimaryButton } from "@nexus/next";
+import { Card, Input } from "@nexus/ui";
+import { PrimaryButton } from "@nexus/next";
 
 export default function RoomsCatalogPage() {
-  const { state, activeUnit, addRoom, updateRoomName, deleteRoom } =
-    useRoomCoat();
+  const { state, activeUnit, addRoom } = useRoomCoat();
   const [newRoomName, setNewRoomName] = useState("Living room");
 
   async function handleAddRoom() {
@@ -31,81 +30,58 @@ export default function RoomsCatalogPage() {
   return (
     <ToolSection
       title="Rooms"
-      description={`Room definitions for ${activeUnit.name}. New rooms are added to the catalog and attached to the active unit. Dimensions are fixed at creation.`}
-      action={
-        <PrimaryButton onClick={() => void handleAddRoom()}>Add room</PrimaryButton>
-      }
+      description={`Catalog rooms for ${activeUnit.name}. Edit names and dimensions here — updates apply everywhere the room is placed.`}
     >
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-text">New room name</span>
-          <input
+      <Card className="mb-6 space-y-4">
+        <div>
+          <h3 className="text-base font-semibold text-text">Add to catalog</h3>
+          <p className="mt-1 text-sm text-muted">
+            New rooms are created with default dimensions and attached to{" "}
+            {activeUnit.name}. Adjust size after adding.
+          </p>
+        </div>
+        <form
+          className="flex flex-col gap-3 sm:flex-row sm:items-end"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleAddRoom();
+          }}
+        >
+          <Input
+            label="Room name"
             value={newRoomName}
             onChange={(event) => setNewRoomName(event.target.value)}
-            className="w-full min-w-[12rem] rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-text outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            placeholder="Living room"
+            className="sm:min-w-[16rem] sm:flex-1"
           />
-        </label>
-      </div>
+          <PrimaryButton type="submit" className="sm:mb-0.5">
+            Add room
+          </PrimaryButton>
+        </form>
+      </Card>
 
       {state.rooms.length === 0 ? (
         <Card>
           <p className="text-sm text-muted">
-            No rooms in your catalog yet. Add a room to attach it to{" "}
+            No rooms in your catalog yet. Add a room above to attach it to{" "}
             {activeUnit.name} and plan paint on the overview.
           </p>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {state.rooms.map((room) => {
-            const attachedUnits = unitsForRoom(room.id);
-            const inActiveUnit = state.placements.some(
-              (placement) =>
-                placement.roomId === room.id &&
-                placement.unitId === activeUnit.id,
-            );
-
-            return (
-              <Card key={room.id} className="flex flex-col gap-4">
-                <div>
-                  <input
-                    value={room.name}
-                    onChange={(event) =>
-                      void updateRoomName(room.id, event.target.value)
-                    }
-                    className="w-full rounded-lg border border-transparent bg-transparent text-lg font-semibold text-text outline-none focus:border-border focus:bg-surface focus:px-2 focus:py-1"
-                    aria-label="Room name"
-                  />
-                  <p className="mt-1 text-sm text-muted">
-                    {formatMm(room.widthMm, state.unitPreference)} ×{" "}
-                    {formatMm(room.lengthMm, state.unitPreference)} ×{" "}
-                    {formatMm(room.heightMm, state.unitPreference)}
-                  </p>
-                  <p className="mt-1 text-xs text-muted">
-                    {attachedUnits.length === 0
-                      ? "Not attached to any unit"
-                      : `In ${attachedUnits.join(", ")}`}
-                    {inActiveUnit ? " · on active unit" : ""}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="danger"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Delete "${room.name}" from the catalog? It will be removed from all units.`,
-                        )
-                      ) {
-                        void deleteRoom(room.id);
-                      }
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
+        <div className="space-y-4">
+          {state.rooms.map((room) => (
+            <RoomCatalogCard
+              key={room.id}
+              room={room}
+              unitPreference={state.unitPreference}
+              attachedUnits={unitsForRoom(room.id)}
+              inActiveUnit={state.placements.some(
+                (placement) =>
+                  placement.roomId === room.id &&
+                  placement.unitId === activeUnit.id,
+              )}
+            />
+          ))}
         </div>
       )}
     </ToolSection>

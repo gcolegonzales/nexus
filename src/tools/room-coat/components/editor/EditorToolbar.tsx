@@ -26,37 +26,41 @@ export function EditorToolbar({
   children,
 }: EditorToolbarProps) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-2 z-10 flex flex-col items-center gap-1 px-2">
+    <div className="pointer-events-none absolute inset-x-0 top-2 z-10 flex w-full flex-col items-center gap-1 px-2">
       <div
-        className={`pointer-events-auto inline-flex items-center gap-px rounded-md px-0.5 py-0.5 ${EDITOR_CHROME}`}
+        className={`pointer-events-auto max-w-full overflow-x-auto rounded-md [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${EDITOR_CHROME}`}
       >
-        {EDITOR_TOOLS.map(({ id, label }) => (
+        <div className="inline-flex shrink-0 items-center gap-px px-0.5 py-0.5">
+          {EDITOR_TOOLS.map(({ id, label }) => (
+            <EditorIconButton
+              key={id}
+              label={label}
+              active={tool === id}
+              onClick={() => onToolChange(id)}
+            >
+              <EditorToolIcon tool={id} />
+            </EditorIconButton>
+          ))}
+
+          <div className="mx-0.5 h-3.5 w-px shrink-0 bg-white/10" aria-hidden />
+
           <EditorIconButton
-            key={id}
-            label={label}
-            active={tool === id}
-            onClick={() => onToolChange(id)}
+            label={showCeilings ? "Hide ceilings" : "Show ceilings"}
+            active={showCeilings}
+            onClick={() => onShowCeilingsChange(!showCeilings)}
           >
-            <EditorToolIcon tool={id} />
+            <CeilingsIcon />
           </EditorIconButton>
-        ))}
-
-        <div className="mx-0.5 h-3.5 w-px bg-white/10" aria-hidden />
-
-        <EditorIconButton
-          label={showCeilings ? "Hide ceilings" : "Show ceilings"}
-          active={showCeilings}
-          onClick={() => onShowCeilingsChange(!showCeilings)}
-        >
-          <CeilingsIcon />
-        </EditorIconButton>
+        </div>
       </div>
 
       {children ? (
         <div
-          className={`pointer-events-auto flex max-w-[min(100%,560px)] flex-wrap items-center gap-1.5 rounded-md px-2 py-1 text-xs ${EDITOR_CHROME}`}
+          className={`pointer-events-auto max-w-full overflow-x-auto rounded-md [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${EDITOR_CHROME}`}
         >
-          {children}
+          <div className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap px-2 py-1 text-xs">
+            {children}
+          </div>
         </div>
       ) : null}
     </div>

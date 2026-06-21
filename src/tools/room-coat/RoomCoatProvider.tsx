@@ -66,7 +66,10 @@ interface RoomCoatContextValue {
   deleteUnit: (unitId: string) => Promise<void>;
   setActiveUnitId: (unitId: string) => Promise<void>;
   addRoom: (name: string) => Promise<string>;
-  updateRoomName: (roomId: string, name: string) => Promise<void>;
+  updateRoom: (
+    roomId: string,
+    patch: Partial<Pick<Room, "name" | "widthMm" | "lengthMm" | "heightMm">>,
+  ) => Promise<void>;
   deleteRoom: (roomId: string) => Promise<void>;
   attachRoomToUnit: (roomId: string, unitId?: string) => Promise<void>;
   detachRoomFromUnit: (placementId: string) => Promise<void>;
@@ -418,15 +421,36 @@ export function RoomCoatProvider({ children }: { children: ReactNode }) {
     [mutate, attachRoomToUnit],
   );
 
-  const updateRoomName = useCallback(
-    async (roomId: string, name: string) => {
+  const updateRoom = useCallback(
+    async (
+      roomId: string,
+      patch: Partial<Pick<Room, "name" | "widthMm" | "lengthMm" | "heightMm">>,
+    ) => {
       await mutate((current) => ({
         ...current,
-        rooms: current.rooms.map((room) =>
-          room.id === roomId
-            ? { ...room, name: name.trim() || room.name }
-            : room,
-        ),
+        rooms: current.rooms.map((room) => {
+          if (room.id !== roomId) return room;
+
+          const next = { ...room };
+
+          if (patch.name !== undefined) {
+            const trimmed = patch.name.trim();
+            if (!trimmed) return room;
+            next.name = trimmed;
+          }
+
+          if (patch.widthMm !== undefined) {
+            next.widthMm = Math.max(300, Math.round(patch.widthMm));
+          }
+          if (patch.lengthMm !== undefined) {
+            next.lengthMm = Math.max(300, Math.round(patch.lengthMm));
+          }
+          if (patch.heightMm !== undefined) {
+            next.heightMm = Math.max(300, Math.round(patch.heightMm));
+          }
+
+          return next;
+        }),
       }));
     },
     [mutate],
@@ -866,7 +890,7 @@ export function RoomCoatProvider({ children }: { children: ReactNode }) {
       deleteUnit,
       setActiveUnitId,
       addRoom,
-      updateRoomName,
+      updateRoom,
       deleteRoom,
       attachRoomToUnit,
       detachRoomFromUnit,
@@ -904,7 +928,7 @@ export function RoomCoatProvider({ children }: { children: ReactNode }) {
     deleteUnit,
     setActiveUnitId,
     addRoom,
-    updateRoomName,
+    updateRoom,
     deleteRoom,
     attachRoomToUnit,
     detachRoomFromUnit,
