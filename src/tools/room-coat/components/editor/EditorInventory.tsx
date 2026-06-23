@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { PopoverPanel } from "@nexus/ui";
 import {
   EDITOR_CHROME,
+  EDITOR_CHROME_PANEL,
   EDITOR_CHROME_BUTTON,
   EDITOR_CHROME_BUTTON_ACTIVE,
-  EDITOR_CHROME_BUTTON_DANGER,
   EDITOR_CHROME_MUTED,
   EDITOR_CLICKABLE,
+  EDITOR_Z_CHROME,
 } from "@/tools/room-coat/components/editor/editor-chrome";
 import { LayersIcon } from "@/tools/room-coat/components/editor/EditorToolIcons";
 import type { Hallway, PlacedRoom } from "@/tools/room-coat/types/state";
@@ -19,6 +20,44 @@ interface EditorInventoryProps {
   onRoomFocus: (placementId: string) => void;
   onRemoveRoom: (placementId: string, name: string) => void;
   onRemoveHallway: (id: string, name: string) => void;
+}
+
+const INVENTORY_REMOVE_BUTTON =
+  "shrink-0 rounded-md border border-red-500/40 bg-red-950/50 px-3 py-1.5 text-xs font-semibold text-red-200 shadow-sm shadow-red-950/30 transition-colors hover:border-red-400/60 hover:bg-red-500/20 hover:text-red-50 active:bg-red-500/30";
+
+function InventoryRow({
+  label,
+  onSelect,
+  onRemove,
+}: {
+  label: string;
+  onSelect?: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <li className="flex items-center gap-2 rounded-lg border border-transparent px-1 py-0.5 transition-colors hover:border-zinc-600/40 hover:bg-zinc-700/35">
+      {onSelect ? (
+        <button
+          type="button"
+          className={`min-w-0 flex-1 truncate rounded-md px-2 py-2 text-left text-sm font-semibold leading-tight text-zinc-100 ${EDITOR_CLICKABLE} ${EDITOR_CHROME_BUTTON}`}
+          onClick={onSelect}
+        >
+          {label}
+        </button>
+      ) : (
+        <span className="min-w-0 flex-1 truncate px-2 py-2 text-sm font-semibold leading-tight text-zinc-200">
+          {label}
+        </span>
+      )}
+      <button
+        type="button"
+        className={`${EDITOR_CLICKABLE} ${INVENTORY_REMOVE_BUTTON}`}
+        onClick={onRemove}
+      >
+        Remove
+      </button>
+    </li>
+  );
 }
 
 export function EditorInventory({
@@ -48,15 +87,16 @@ export function EditorInventory({
   return (
     <div
       ref={rootRef}
-      className={`pointer-events-auto absolute bottom-2.5 right-2.5 ${open ? "z-20" : "z-10"}`}
+      className="pointer-events-auto absolute bottom-3 right-3"
+      style={{ zIndex: EDITOR_Z_CHROME }}
     >
       <button
         type="button"
         aria-expanded={open}
         aria-label={`Unit contents, ${count} item${count === 1 ? "" : "s"}`}
         onClick={() => setOpen((current) => !current)}
-        className={`inline-flex items-center gap-1 border border-white/10 px-1.5 py-1 text-[11px] font-medium backdrop-blur-md ${EDITOR_CLICKABLE} ${
-          open ? EDITOR_CHROME_BUTTON_ACTIVE : `${EDITOR_CHROME_BUTTON} bg-slate-900/90`
+        className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold ${EDITOR_CHROME} ${EDITOR_CLICKABLE} ${
+          open ? EDITOR_CHROME_BUTTON_ACTIVE : EDITOR_CHROME_BUTTON
         }`}
       >
         <LayersIcon />
@@ -66,54 +106,31 @@ export function EditorInventory({
       <PopoverPanel
         open={open}
         align="end"
-        className={`bottom-full right-0 mb-1 !mt-0 w-52 rounded-md p-1.5 ${EDITOR_CHROME}`}
+        className={`bottom-full right-0 mb-2 !mt-0 w-72 rounded-xl p-3 ${EDITOR_CHROME_PANEL}`}
       >
         <p
-          className={`mb-1 px-1 text-[10px] font-medium uppercase tracking-wide ${EDITOR_CHROME_MUTED}`}
+          className={`mb-2 px-1 text-xs font-semibold uppercase tracking-wider ${EDITOR_CHROME_MUTED}`}
         >
           In this unit
         </p>
-        <ul className="flex max-h-36 flex-col gap-0.5 overflow-y-auto text-xs">
+        <ul className="flex max-h-52 flex-col gap-1 overflow-y-auto">
           {rooms.map((room) => (
-            <li
+            <InventoryRow
               key={room.placementId}
-              className="flex items-center justify-between gap-1 rounded"
-            >
-              <button
-                type="button"
-                className={`min-w-0 flex-1 truncate px-1 py-0.5 text-left ${EDITOR_CLICKABLE} ${EDITOR_CHROME_BUTTON}`}
-                onClick={() => {
-                  onRoomFocus(room.placementId);
-                  setOpen(false);
-                }}
-              >
-                {room.name}
-              </button>
-              <button
-                type="button"
-                className={`shrink-0 px-1 py-0.5 text-[10px] ${EDITOR_CLICKABLE} ${EDITOR_CHROME_BUTTON_DANGER}`}
-                onClick={() => onRemoveRoom(room.placementId, room.name)}
-              >
-                Remove
-              </button>
-            </li>
+              label={room.name}
+              onSelect={() => {
+                onRoomFocus(room.placementId);
+                setOpen(false);
+              }}
+              onRemove={() => onRemoveRoom(room.placementId, room.name)}
+            />
           ))}
           {hallways.map((hallway) => (
-            <li
+            <InventoryRow
               key={hallway.id}
-              className="flex items-center justify-between gap-1 rounded"
-            >
-              <span className="min-w-0 flex-1 truncate px-1 py-0.5 text-slate-300">
-                {hallway.name}
-              </span>
-              <button
-                type="button"
-                className={`shrink-0 px-1 py-0.5 text-[10px] ${EDITOR_CLICKABLE} ${EDITOR_CHROME_BUTTON_DANGER}`}
-                onClick={() => onRemoveHallway(hallway.id, hallway.name)}
-              >
-                Remove
-              </button>
-            </li>
+              label={hallway.name}
+              onRemove={() => onRemoveHallway(hallway.id, hallway.name)}
+            />
           ))}
         </ul>
       </PopoverPanel>

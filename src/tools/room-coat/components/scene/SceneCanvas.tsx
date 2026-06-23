@@ -19,7 +19,7 @@ const UnitScene = dynamic(
 
 export function SceneCanvas() {
   return (
-    <div className="h-[min(60vh,520px)] min-h-[320px] overflow-hidden rounded-xl border border-border shadow-[var(--shadow)]">
+    <div className="h-[min(65vh,600px)] min-h-[360px] overflow-hidden rounded-xl border border-border shadow-[var(--shadow)]">
       <UnitScene />
     </div>
   );

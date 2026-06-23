@@ -1,20 +1,12 @@
-import type { Hallway, WallSide } from "@/tools/room-coat/types/state";
+import type { Hallway } from "@/tools/room-coat/types/state";
 import { listHallwaySegmentWalls } from "@/tools/room-coat/lib/hallway-geometry";
 import {
   parseHallwaySurfaceId,
   parseRoomWallSurfaceId,
 } from "@/tools/room-coat/lib/editor-surfaces";
 
-/** Clockwise from north when viewed from above. */
-const ROOM_WALL_NUMBERS: Record<WallSide, number> = {
-  north: 1,
-  east: 2,
-  south: 3,
-  west: 4,
-};
-
-export function roomWallLabelNumber(wall: WallSide): number {
-  return ROOM_WALL_NUMBERS[wall];
+export function roomWallLabelNumber(wallIndex: number): number {
+  return wallIndex + 1;
 }
 
 export function hallwayWallLabelNumber(
@@ -35,7 +27,7 @@ export function wallLabelTextForSurfaceId(
 ): string | null {
   const roomWall = parseRoomWallSurfaceId(surfaceId);
   if (roomWall) {
-    return String(roomWallLabelNumber(roomWall.wall));
+    return String(roomWallLabelNumber(roomWall.wallIndex));
   }
 
   const hallwayWall = parseHallwaySurfaceId(surfaceId);
@@ -55,7 +47,7 @@ export function wallLabelTextForSurfaceId(
 export function wallLabelKey(surfaceId: string): string | null {
   const roomWall = parseRoomWallSurfaceId(surfaceId);
   if (roomWall) {
-    return `room:${roomWall.placementId}:${roomWall.wall}`;
+    return `room:${roomWall.placementId}:${roomWall.wallIndex}`;
   }
 
   const hallwayWall = parseHallwaySurfaceId(surfaceId);

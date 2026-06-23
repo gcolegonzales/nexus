@@ -7,7 +7,7 @@ import { RoomFootprintPreview } from "@/tools/room-coat/components/RoomFootprint
 import { PaintPicker } from "@/tools/room-coat/components/PaintPicker";
 import { defaultCoatFieldLabel } from "@/tools/room-coat/lib/build-surfaces";
 import { defaultRoomDimensionsMm, formatMm } from "@/tools/room-coat/lib/units";
-import { Input, Modal } from "@nexus/ui";
+import { Input, Modal, useToast } from "@nexus/ui";
 import { FormActions } from "@nexus/next";
 
 interface AddRoomModalProps {
@@ -33,6 +33,7 @@ function createDefaultDraft(): AddRoomDraft {
 
 export function AddRoomModal({ open, onClose }: AddRoomModalProps) {
   const { state, activeUnit, activePaints, addRoom } = useRoomCoat();
+  const toast = useToast();
   const [draft, setDraft] = useState<AddRoomDraft>(() => createDefaultDraft());
 
   useEffect(() => {
@@ -54,6 +55,7 @@ export function AddRoomModal({ open, onClose }: AddRoomModalProps) {
     };
 
     await addRoom(input);
+    toast.success("Room added");
     onClose();
   }
 

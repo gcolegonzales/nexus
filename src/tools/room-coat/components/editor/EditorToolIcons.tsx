@@ -1,50 +1,84 @@
 import type { EditorTool } from "@/tools/room-coat/lib/editor-surfaces";
 
-const iconClass = "h-[15px] w-[15px]";
+const iconClass = "h-[18px] w-[18px]";
+export const EDITOR_TOOLBAR_ICON_CLASS = "h-5 w-5";
 
-export function EditorToolIcon({ tool }: { tool: EditorTool }) {
+export function EditorToolIcon({
+  tool,
+  className = iconClass,
+}: {
+  tool: EditorTool;
+  className?: string;
+}) {
   switch (tool) {
+    case "select":
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M4 4l7 17 2.5-7.5L21 11 4 4z" strokeLinejoin="round" />
+        </svg>
+      );
     case "move":
       return (
-        <svg className={iconClass} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
           <path d="M12 2v20M2 12h20M7 7l5-5 5 5M7 17l5 5 5-5M7 7H2M17 7h5M7 17H2M17 17h5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "paint":
       return (
-        <svg className={iconClass} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
           <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L8 19l-4 1 1-4L18.5 2.5z" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M15 5l4 4" strokeLinecap="round" />
         </svg>
       );
     case "add-room":
       return (
-        <svg className={iconClass} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
           <path d="M12 5v14M5 12h14" strokeLinecap="round" />
           <rect x="3" y="3" width="18" height="18" rx="2" />
         </svg>
       );
     case "hallway":
       return (
-        <svg className={iconClass} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
           <path d="M4 8h6v8H4zM14 4h6v6h-6zM14 14h6v6h-6z" strokeLinejoin="round" />
           <path d="M10 12h4" strokeLinecap="round" />
         </svg>
       );
     case "open-walls":
       return (
-        <svg className={iconClass} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
           <path d="M4 20V4h8" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M12 4h8v16" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M12 12H8M16 12h-4" strokeLinecap="round" />
         </svg>
       );
+    case "furnish":
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <rect x="4" y="8" width="16" height="8" rx="1" />
+          <path d="M4 12h16" strokeLinecap="round" />
+        </svg>
+      );
+    case "snap-point":
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round" />
+        </svg>
+      );
+    case "measure":
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+          <path d="M4 20L20 4" strokeLinecap="round" />
+          <path d="M7 17l2-2M11 13l2-2M15 9l2-2" strokeLinecap="round" />
+        </svg>
+      );
   }
 }
 
-export function CeilingsIcon() {
+export function CeilingsIcon({ className = iconClass }: { className?: string }) {
   return (
-    <svg className={iconClass} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
       <path d="M4 10l8-6 8 6v10H4V10z" strokeLinejoin="round" />
       <path d="M9 20v-5h6v5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>

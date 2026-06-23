@@ -17,6 +17,10 @@ export function surfaceCategoryTitle(category: SurfaceCategory): string {
       return "Ceiling";
     case "door":
       return "Door";
+    case "window":
+      return "Window";
+    case "floor":
+      return "Floor";
   }
 }
 
@@ -29,18 +33,29 @@ export function meshCategoryTitle(
 
 export function roomWallSurfaceLabel(
   roomName: string,
-  wall: WallSide,
+  wallIndex: number,
   segIndex: number,
   hasPartial: boolean,
 ): string {
+  const wallNum = wallIndex + 1;
   if (hasPartial) {
-    return `${roomName} — ${WALL_LABELS[wall]} (Section ${segIndex + 1})`;
+    return `${roomName} — Wall ${wallNum} (Section ${segIndex + 1})`;
   }
-  return `${roomName} — ${WALL_LABELS[wall]}`;
+  return `${roomName} — Wall ${wallNum}`;
 }
 
-export function roomDoorSurfaceLabel(roomName: string, wall: WallSide): string {
-  return `${roomName} — Door (${WALL_LABELS[wall]})`;
+export function roomDoorSurfaceLabel(
+  roomName: string,
+  wallIndex: number,
+): string {
+  return `${roomName} — Door (Wall ${wallIndex + 1})`;
+}
+
+export function roomWindowSurfaceLabel(
+  roomName: string,
+  wallIndex: number,
+): string {
+  return `${roomName} — Window (Wall ${wallIndex + 1})`;
 }
 
 export function roomCeilingSurfaceLabel(roomName: string): string {
@@ -49,6 +64,14 @@ export function roomCeilingSurfaceLabel(roomName: string): string {
 
 export function roomFloorSurfaceLabel(roomName: string): string {
   return `${roomName} — Floor`;
+}
+
+export function roomBaseboardSurfaceLabel(roomName: string): string {
+  return `${roomName} — Baseboards`;
+}
+
+export function hallwayBaseboardSurfaceLabel(hallwayName: string): string {
+  return `${hallwayName} — Baseboards`;
 }
 
 export function hallwaySegmentWallLabel(

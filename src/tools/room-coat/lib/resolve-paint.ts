@@ -1,9 +1,11 @@
+import { isPaintSurfaceOverride } from "@/tools/room-coat/lib/floor-finish-override";
 import type {
   Door,
   Hallway,
   RoomCoat,
   SurfaceCategory,
   SurfaceDescriptor,
+  Paint,
 } from "@/tools/room-coat/types/state";
 
 export const UNSET_PAINT_HEX = "#94a3b8";
@@ -13,14 +15,6 @@ export type PaintSource = "override" | "coat" | "unit-default" | "unset";
 export interface ResolvedPaint {
   paint: Paint | null;
   source: PaintSource;
-  hex: string;
-}
-
-interface Paint {
-  id: string;
-  code: string;
-  brand?: string;
-  name?: string;
   hex: string;
 }
 
@@ -43,6 +37,10 @@ function coatPaintIdForCategory(
       return coat.ceilingPaintId;
     case "door":
       return coat.doorPaintId;
+    case "window":
+      return null;
+    case "floor":
+      return null;
   }
 }
 
@@ -57,9 +55,13 @@ export function resolveSurfacePaint(
   paints: Paint[],
   unitDefaultCoat?: RoomCoat,
 ): ResolvedPaint {
+  if (surface.category === "floor") {
+    return { paint: null, source: "unset", hex: UNSET_PAINT_HEX };
+  }
+
   const overrideId = space.surfaceOverrides[surface.id];
 
-  if (overrideId) {
+  if (isPaintSurfaceOverride(overrideId)) {
     const paint = findPaint(paints, overrideId);
     return {
       paint,

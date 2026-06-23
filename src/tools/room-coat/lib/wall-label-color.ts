@@ -35,3 +35,17 @@ export function relativeLuminance(hex: string): number {
 export function labelColorForWallHex(hex: string, threshold = 0.42): string {
   return relativeLuminance(hex) < threshold ? "#ffffff" : "#000000";
 }
+
+/** Darken a wall paint hex for a subtle perimeter outline. */
+export function darkenHex(hex: string, factor = 0.48): string {
+  const expanded = expandHex(hex);
+  if (!expanded) return "#1e293b";
+
+  const mixChannel = (slice: number) =>
+    Math.max(0, Math.min(255, Math.round(channel(expanded.slice(slice, slice + 2)) * 255 * factor)));
+
+  const r = mixChannel(0).toString(16).padStart(2, "0");
+  const g = mixChannel(2).toString(16).padStart(2, "0");
+  const b = mixChannel(4).toString(16).padStart(2, "0");
+  return `#${r}${g}${b}`;
+}

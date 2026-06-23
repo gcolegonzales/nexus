@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  AccordionCard,
   AccordionCaret,
   Badge,
   Card,
@@ -28,6 +29,7 @@ import {
   PrimaryButton,
 } from "@nexus/next";
 import { DocSection, NavLink } from "./showcase";
+import { PAGE_CONTAINER } from "@/shared/ui/page-container";
 
 const navSections = [
   { id: "overview", label: "Overview" },
@@ -42,6 +44,7 @@ const navSections = [
   { id: "form-actions", label: "FormActions" },
   { id: "modal", label: "Modal" },
   { id: "multiselect", label: "MultiSelect" },
+  { id: "accordion-card", label: "AccordionCard" },
   { id: "collapsible", label: "Collapsible" },
   { id: "popover", label: "PopoverPanel" },
   { id: "stagger", label: "Stagger" },
@@ -59,6 +62,7 @@ const filterOptions = [
 export default function ComponentLibraryPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [collapsibleOpen, setCollapsibleOpen] = useState(true);
+  const [accordionOpen, setAccordionOpen] = useState(false);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [filterValues, setFilterValues] = useState<string[]>(["hvac"]);
   const [filterPending, setFilterPending] = useState(false);
@@ -75,7 +79,7 @@ export default function ComponentLibraryPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-10 sm:flex-row sm:px-6 sm:py-14">
+    <div className={`${PAGE_CONTAINER} flex flex-col gap-10 py-10 sm:flex-row sm:py-14`}>
       <aside className="sm:sticky sm:top-24 sm:h-fit sm:w-56 sm:shrink-0">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
           @nexus/ui
@@ -324,9 +328,34 @@ export default function ComponentLibraryPage() {
         </DocSection>
 
         <DocSection
+          id="accordion-card"
+          title="AccordionCard"
+          description="Shared card accordion used in Room Coat and Home Maintenance. Header stays row-aligned on mobile with the caret on the right."
+          code={`<AccordionCard
+  open={open}
+  onHeaderClick={() => setOpen(!open)}
+  title="Furnace filter"
+  description="Replace every 90 days"
+>
+  …panel content…
+</AccordionCard>`}
+        >
+          <AccordionCard
+            open={accordionOpen}
+            onHeaderClick={() => setAccordionOpen((current) => !current)}
+            title="Furnace filter"
+            description="Replace every 90 days or when visibly dirty."
+          >
+            <p className="text-sm text-muted">
+              Check the filter size on the asset card before buying a replacement.
+            </p>
+          </AccordionCard>
+        </DocSection>
+
+        <DocSection
           id="collapsible"
           title="Collapsible & AccordionCaret"
-          description="Height-animated reveal used in tool accordions. AccordionCaret rotates with open state."
+          description="Lower-level primitives. AccordionCard composes Card, Collapsible, and AccordionCaret."
           code={`<button onClick={() => setOpen(!open)}>
   Section title <AccordionCaret open={open} />
 </button>

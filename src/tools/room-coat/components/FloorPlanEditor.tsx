@@ -30,7 +30,7 @@ type FloorPlanTool = "select" | "add-room" | "hallway" | "open-walls";
 
 type OpeningDrag = {
   placementId: string;
-  wall: WallSide;
+  wallIndex: number;
   startMm: number;
   endMm: number;
 } | null;
@@ -94,7 +94,7 @@ export function FloorPlanEditor() {
   const [hallwayHover, setHallwayHover] = useState<HallwayWaypoint | null>(null);
   const [hoveredWall, setHoveredWall] = useState<{
     placementId: string;
-    wall: WallSide;
+    wallIndex: number;
   } | null>(null);
 
   const [waypointDrag, setWaypointDrag] = useState<WaypointDrag>(null);
@@ -201,7 +201,7 @@ export function FloorPlanEditor() {
       return;
     }
     setHallwayHover({ xMm: hit.x, zMm: hit.z });
-    setHoveredWall({ placementId: hit.room.placementId, wall: hit.wall });
+    setHoveredWall({ placementId: hit.room.placementId, wallIndex: hit.wallIndex });
   }
 
   function handlePointerDownRoom(room: PlacedRoom, event: React.PointerEvent) {
@@ -271,7 +271,7 @@ export function FloorPlanEditor() {
       if (!room) return;
       const projected = projectPointToWall(
         room,
-        openingDrag.wall,
+        openingDrag.wallIndex,
         world.x,
         world.z,
       );
@@ -340,7 +340,7 @@ export function FloorPlanEditor() {
           for (const room of rooms) {
             for (const opening of room.wallOpenings) {
               if (
-                opening.wall !== drag.wall ||
+                opening.wallIndex !== drag.wallIndex ||
                 room.placementId !== drag.placementId
               ) {
                 continue;
@@ -357,7 +357,7 @@ export function FloorPlanEditor() {
         } else {
           void addWallOpening(
             drag.placementId,
-            drag.wall,
+            drag.wallIndex,
             drag.startMm,
             drag.endMm,
           );
@@ -384,7 +384,7 @@ export function FloorPlanEditor() {
 
   function handleWallPointerDown(
     room: PlacedRoom,
-    wall: WallSide,
+    wallIndex: number,
     event: React.PointerEvent,
   ) {
     const world = pointerToWorld(event);
@@ -393,11 +393,11 @@ export function FloorPlanEditor() {
     if (tool === "hallway") {
       event.preventDefault();
       event.stopPropagation();
-      const projected = projectPointToWall(room, wall, world.x, world.z);
+      const projected = projectPointToWall(room, wallIndex, world.x, world.z);
       if (!projected || projected.distanceMm > 280) return;
       commitHallwayPoint({
         room,
-        wall,
+        wallIndex,
         x: projected.x,
         z: projected.z,
         offsetMm: projected.offsetMm,
@@ -410,11 +410,11 @@ export function FloorPlanEditor() {
       event.stopPropagation();
       const svg = svgRef.current;
       svg?.setPointerCapture(event.pointerId);
-      const projected = projectPointToWall(room, wall, world.x, world.z);
+      const projected = projectPointToWall(room, wallIndex, world.x, world.z);
       if (!projected) return;
       const drag = {
         placementId: room.placementId,
-        wall,
+        wallIndex,
         startMm: projected.offsetMm,
         endMm: projected.offsetMm,
       };
@@ -597,7 +597,7 @@ export function FloorPlanEditor() {
           <svg
             ref={svgRef}
             viewBox={`0 0 ${viewBox.width * PX_PER_MM} ${viewBox.height * PX_PER_MM}`}
-            className={`h-[min(65vh,560px)] min-h-[320px] w-full touch-none ${canvasCursor}`}
+            className={`h-[min(68vh,640px)] min-h-[360px] w-full touch-none ${canvasCursor}`}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
             onPointerLeave={handlePointerLeave}
@@ -770,20 +770,20 @@ export function FloorPlanEditor() {
 
                   {wallEdges(displayRoom).map((edge) => (
                     <WallEdgeOverlay
-                      key={`${room.placementId}-${edge.wall}`}
+                      key={`${room.placementId}-${edge.wallIndex}`}
                       room={displayRoom}
                       edge={edge}
-                      openings={openingsForWall(displayRoom, edge.wall)}
+                      openings={openingsForWall(displayRoom, edge.wallIndex)}
                       openingDrag={
                         openingDrag?.placementId === room.placementId &&
-                        openingDrag.wall === edge.wall
+                        openingDrag.wallIndex === edge.wallIndex
                           ? openingDrag
                           : null
                       }
                       tool={tool}
                       isHovered={
                         hoveredWall?.placementId === room.placementId &&
-                        hoveredWall.wall === edge.wall
+                        hoveredWall.wallIndex === edge.wallIndex
                       }
                       toSvgX={toSvgX}
                       toSvgY={toSvgY}
@@ -856,7 +856,7 @@ function WallEdgeOverlay({
   isHovered: boolean;
   toSvgX: (mm: number) => number;
   toSvgY: (mm: number) => number;
-  onWallPointerDown: (wall: WallSide, event: React.PointerEvent) => void;
+  onWallPointerDown: (wallIndex: number, event: React.PointerEvent) => void;
 }) {
   const isWallTool = tool === "hallway" || tool === "open-walls";
   const segments = solidSegmentsWithPreview(
@@ -882,8 +882,8 @@ function WallEdgeOverlay({
       )}
 
       {openings.map((opening) => {
-        const start = offsetToWorldOnWall(room, edge.wall, opening.startMm);
-        const end = offsetToWorldOnWall(room, edge.wall, opening.endMm);
+        const start = offsetToWorldOnWall(room, edge.wallIndex, opening.startMm);
+        const end = offsetToWorldOnWall(room, edge.wallIndex, opening.endMm);
         return (
           <line
             key={opening.id}
@@ -905,8 +905,8 @@ function WallEdgeOverlay({
         (() => {
           const lo = Math.min(openingDrag.startMm, openingDrag.endMm);
           const hi = Math.max(openingDrag.startMm, openingDrag.endMm);
-          const start = offsetToWorldOnWall(room, edge.wall, lo);
-          const end = offsetToWorldOnWall(room, edge.wall, hi);
+          const start = offsetToWorldOnWall(room, edge.wallIndex, lo);
+          const end = offsetToWorldOnWall(room, edge.wallIndex, hi);
           return (
             <line
               x1={toSvgX(start.x)}
@@ -931,7 +931,7 @@ function WallEdgeOverlay({
           stroke="transparent"
           strokeWidth={22}
           className={tool === "hallway" ? "cursor-crosshair" : "cursor-crosshair"}
-          onPointerDown={(event) => onWallPointerDown(edge.wall, event)}
+          onPointerDown={(event) => onWallPointerDown(edge.wallIndex, event)}
         />
       )}
     </g>
@@ -947,7 +947,7 @@ function solidSegmentsWithPreview(
   if (preview) {
     merged.push({
       id: "preview",
-      wall: preview.wall,
+      wallIndex: preview.wallIndex,
       startMm: preview.startMm,
       endMm: preview.endMm,
     });

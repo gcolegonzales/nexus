@@ -1,5 +1,13 @@
 export {
   AccordionCaret,
+  AccordionCard,
+  accordionCardClassName,
+  accordionCardTransitionClassName,
+  accordionHeaderActionsClassName,
+  accordionHeaderClassName,
+  accordionHeaderDescriptionClassName,
+  accordionHeaderTitleClassName,
+  accordionPanelClassName,
   Badge,
   Card,
   Checkbox,
@@ -19,6 +27,8 @@ export {
   ThemeScript,
   ThemeSelector,
   ThemeToggle,
+  ToastProvider,
+  useToast,
   applyTheme,
   getStoredTheme,
   resolveDarkMode,
@@ -27,7 +37,7 @@ export {
   THEME_STORAGE_KEY,
 } from "@nexus/ui";
 
-export type { BadgeVariant, MultiSelectOption, ThemeMode } from "@nexus/ui";
+export type { BadgeVariant, MultiSelectOption, ThemeMode, ToastOptions, ToastTone } from "@nexus/ui";
 
 export { Button } from "./Button";
 export { FormActions } from "./FormActions";

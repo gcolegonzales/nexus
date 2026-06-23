@@ -2,6 +2,7 @@ import type { UnitPreference } from "@/tools/room-coat/types/state";
 
 const MM_PER_INCH = 25.4;
 const MM_PER_FOOT = MM_PER_INCH * 12;
+const M_PER_FOOT = MM_PER_FOOT / 1000;
 
 export interface ImperialDisplay {
   feet: number;
@@ -87,6 +88,11 @@ export function areaUnitSuffix(unit: UnitPreference): string {
   return unit === "metric" ? "m²" : "sq ft";
 }
 
+/** One grid cell on floor overlays: 1 sq ft or 1 m² depending on units. */
+export function floorGridCellSizeM(unit: UnitPreference): number {
+  return unit === "metric" ? 1 : M_PER_FOOT;
+}
+
 /** Default room: 12' × 14' × 8' */
 export function defaultRoomDimensionsMm() {
   return {
@@ -101,6 +107,16 @@ export function defaultDoorDimensionsMm() {
   return {
     widthMm: imperialToMm(3, 0),
     heightMm: imperialToMm(6, 8),
+    offsetFromCornerMm: imperialToMm(2, 0),
+  };
+}
+
+/** Default window: 36" × 48" with 36" sill height */
+export function defaultWindowDimensionsMm() {
+  return {
+    widthMm: imperialToMm(3, 0),
+    heightMm: imperialToMm(4, 0),
+    sillHeightMm: imperialToMm(3, 0),
     offsetFromCornerMm: imperialToMm(2, 0),
   };
 }

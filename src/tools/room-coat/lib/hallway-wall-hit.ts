@@ -431,18 +431,18 @@ export function setHallwayPlacementSpan(
   };
 }
 
+/** `xMm` / `zMm` must be in floor-local coordinates. */
 export function hallwayWallHitFromPointer(
   hallway: Hallway,
   segIndex: number,
   side: 0 | 1,
-  worldXM: number,
-  worldZM: number,
+  xMm: number,
+  zMm: number,
   faceNormalX = 0,
   faceNormalZ = 0,
 ): HallwayWallHit | null {
-  const MM_TO_M = 0.001;
-  const pointerXMm = worldXM / MM_TO_M;
-  const pointerZMm = worldZM / MM_TO_M;
+  const pointerXMm = xMm;
+  const pointerZMm = zMm;
   const projected = projectPointToHallwayWall(
     hallway,
     segIndex,

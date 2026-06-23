@@ -1,11 +1,12 @@
 "use client";
 
 import { Html, Line } from "@react-three/drei";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, type RefObject } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
-import { DoubleSide } from "three";
+import { DoubleSide, type Group, type Object3D } from "three";
 import {
   commitWallPlacementPoint,
+  computeExitAlignmentSnaps,
   draftDisplayPath,
   draftOpeningLinks,
   offsetFromWallPointer,
@@ -15,6 +16,7 @@ import {
   resolveHallwayExitNormal,
   setPlacementCenter,
   setPlacementSpan,
+  type ExitAlignmentSnap,
   type HallwayDrawDraft,
   type WallLink,
   type WallPlacement,
@@ -23,6 +25,7 @@ import {
   PREVIEW_OPENING_COLOR,
   PREVIEW_OPENING_EMISSIVE,
 } from "@/tools/room-coat/lib/hallway-draft";
+import type { RoomAngleSnapMode } from "@/tools/room-coat/lib/room-shape";
 import {
   getHallwayWallLayout,
   offsetFromHallwayWallPointer,
@@ -47,16 +50,99 @@ import {
   hallwaySegmentLengthMm,
 } from "@/tools/room-coat/lib/surface-measurements";
 import { formatMm } from "@/tools/room-coat/lib/units";
-import { EDITOR_CHROME } from "@/tools/room-coat/components/editor/editor-chrome";
+import { EDITOR_CHROME, EDITOR_Z_SCENE_HTML } from "@/tools/room-coat/components/editor/editor-chrome";
+import {
+  collectHallwayEntranceTargets,
+  collectHallwayContinuationTargets,
+  continuationGuidesForTargets,
+  entranceGuidesForTargets,
+  snapWallPlacementToEntrance,
+} from "@/tools/room-coat/lib/hallway-entrance-snaps";
+import { SnapGuideVisual } from "@/tools/room-coat/components/scene/LayoutVisuals";
+import { FLOOR_SURFACE_Y_M } from "@/tools/room-coat/lib/room-geometry";
 import type {
   Hallway,
   HallwayWaypoint,
   PlacedRoom,
+  SnapPoint,
   UnitPreference,
   WallSide,
 } from "@/tools/room-coat/types/state";
 
 const MM_TO_M = 0.001;
+const CONTINUATION_GUIDE_COLOR = "#38bdf8";
+
+function ContinuationGuideVisual({
+  guides,
+}: {
+  guides: import("@/tools/room-coat/lib/snap-guides").SnapGuideSegment[];
+}) {
+  if (guides.length === 0) return null;
+
+  return (
+    <group>
+      {guides.map((guide, index) => (
+        <Line
+          key={`continuation-guide:${index}:${guide.x1Mm}:${guide.z1Mm}`}
+          points={[
+            [
+              guide.x1Mm * MM_TO_M,
+              FLOOR_SURFACE_Y_M + 0.018,
+              guide.z1Mm * MM_TO_M,
+            ],
+            [
+              guide.x2Mm * MM_TO_M,
+              FLOOR_SURFACE_Y_M + 0.018,
+              guide.z2Mm * MM_TO_M,
+            ],
+          ]}
+          color={CONTINUATION_GUIDE_COLOR}
+          lineWidth={2}
+          dashed
+          dashSize={0.1}
+          gapSize={0.08}
+          transparent
+          opacity={0.9}
+        />
+      ))}
+    </group>
+  );
+}
+
+function ContinuationAnchorMarkers({
+  targets,
+}: {
+  targets: import("@/tools/room-coat/lib/hallway-entrance-snaps").HallwayContinuationTarget[];
+}) {
+  if (targets.length === 0) return null;
+
+  return (
+    <group renderOrder={998}>
+      {targets.map((target) => (
+        <mesh
+          key={target.id}
+          position={[
+            target.anchor.xMm * MM_TO_M,
+            FLOOR_SURFACE_Y_M + 0.06,
+            target.anchor.zMm * MM_TO_M,
+          ]}
+          renderOrder={999}
+          raycast={() => null}
+        >
+          <sphereGeometry args={[0.08, 14, 14]} />
+          <meshStandardMaterial
+            color={CONTINUATION_GUIDE_COLOR}
+            emissive="#0284c7"
+            emissiveIntensity={0.45}
+            depthTest={false}
+            transparent
+            opacity={0.92}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
 const HANDLE_LIFT_M = 0.15;
 const WALL_OUTSET_MM = 180;
 
@@ -82,7 +168,7 @@ function outwardOffset(
   }
   const exit = resolveHallwayExitNormal(
     room,
-    placement.link.wall,
+    placement.link.wallIndex,
     placement.link.offsetMm,
   );
   return { xMm: exit.x * mm, zMm: exit.z * mm };
@@ -116,14 +202,14 @@ function RoomWallOpeningOutline({
     : openingSpanForLink(room, link, widthMm);
   const exit = placement
     ? { x: placement.faceNormalX, z: placement.faceNormalZ }
-    : resolveHallwayExitNormal(room, link.wall, link.offsetMm);
+    : resolveHallwayExitNormal(room, link.wallIndex, link.offsetMm);
   const outsetMm = 30;
   const bottomY = 0.04;
   const topY = room.heightMm * MM_TO_M - 0.04;
   const midY = room.heightMm * MM_TO_M * 0.5;
 
-  const start = offsetToWorldOnWall(room, link.wall, span.startMm);
-  const end = offsetToWorldOnWall(room, link.wall, span.endMm);
+  const start = offsetToWorldOnWall(room, link.wallIndex, span.startMm);
+  const end = offsetToWorldOnWall(room, link.wallIndex, span.endMm);
 
   const pos = (x: number, z: number, y: number): [number, number, number] => [
     (x + exit.x * outsetMm) * MM_TO_M,
@@ -349,28 +435,108 @@ function Handle({
   );
 }
 
-function EndpointPlacementHandles({
+function HallwayExitAlignmentMarkers({
   rooms,
   hallways,
-  placement,
-  role,
-  onPlacementChange,
-  onPullOut,
-  onConfirmEnd,
-  onPlacementDragEnd,
+  draft,
+  onSnapCommit,
   disableOrbit,
   enableOrbit,
 }: {
   rooms: PlacedRoom[];
   hallways: Hallway[];
+  draft: HallwayDrawDraft;
+  onSnapCommit: (snap: ExitAlignmentSnap) => void;
+  disableOrbit: () => void;
+  enableOrbit: () => void;
+}) {
+  const snaps = useMemo(
+    () => computeExitAlignmentSnaps(rooms, hallways, draft),
+    [rooms, hallways, draft],
+  );
+
+  if (snaps.length === 0) return null;
+
+  return (
+    <group renderOrder={998}>
+      {snaps.map((snap, index) => {
+        const guidePoints = snap.guidePath.map(
+          (point) => toM(point, 0.09) as [number, number, number],
+        );
+        return (
+          <group key={`exit-align-${index}-${snap.point.xMm}-${snap.point.zMm}`}>
+            {guidePoints.length >= 2 && (
+              <Line
+                points={guidePoints}
+                color="#34d399"
+                lineWidth={3}
+                dashed
+                dashSize={0.14}
+                gapSize={0.1}
+                transparent
+                opacity={0.75}
+              />
+            )}
+            <Handle
+              position={toM(snap.point, 0.16)}
+              color="#34d399"
+              emissive="#059669"
+              size={0.15}
+              hitSize={0.28}
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                disableOrbit();
+                onSnapCommit(snap);
+                enableOrbit();
+              }}
+            />
+            <Html
+              position={[snap.point.xMm * MM_TO_M, 0.42, snap.point.zMm * MM_TO_M]}
+              center
+              zIndexRange={[EDITOR_Z_SCENE_HTML, 0]}
+              style={{ pointerEvents: "none" }}
+            >
+              <div
+                className={`max-w-[220px] whitespace-normal rounded-md px-2 py-1 text-center text-[11px] font-medium text-emerald-100 ${EDITOR_CHROME}`}
+              >
+                {snap.label}
+              </div>
+            </Html>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+function EndpointPlacementHandles({
+  rooms,
+  hallways,
+  placement,
+  role,
+  snapPoints,
+  onPlacementChange,
+  onPullOut,
+  onConfirmEnd,
+  onConfirmStart,
+  onPlacementDragEnd,
+  disableOrbit,
+  enableOrbit,
+  floorLocalSpaceRef,
+}: {
+  rooms: PlacedRoom[];
+  hallways: Hallway[];
   placement: WallPlacement;
   role: "start" | "end";
+  snapPoints: SnapPoint[];
   onPlacementChange: (placement: WallPlacement) => void;
   onPullOut?: (preview: HallwayWaypoint) => void;
   onConfirmEnd?: () => void;
+  onConfirmStart?: () => void;
   onPlacementDragEnd: () => void;
   disableOrbit: () => void;
   enableOrbit: () => void;
+  floorLocalSpaceRef: RefObject<Object3D | null>;
 }) {
   const link = placement.link;
   const room = isRoomWallLink(link)
@@ -384,11 +550,29 @@ function EndpointPlacementHandles({
   const span = placementOpeningSpan(room, hallways, placement);
   const heightMm = room?.heightMm ?? hallway?.heightMm ?? 2438;
   const y = heightMm * MM_TO_M * 0.55 + HANDLE_LIFT_M;
-  const beginFloorDrag = useFloorPointerDrag(disableOrbit, enableOrbit);
+  const beginFloorDrag = useFloorPointerDrag(
+    disableOrbit,
+    enableOrbit,
+    floorLocalSpaceRef,
+  );
   const centerClickRef = useRef(false);
+  const entranceTargets = useMemo(
+    () => collectHallwayEntranceTargets(rooms, hallways, snapPoints),
+    [rooms, hallways, snapPoints],
+  );
+
+  function snapCenterPlacement(next: WallPlacement, offsetMm: number): WallPlacement {
+    return snapWallPlacementToEntrance(
+      rooms,
+      hallways,
+      next,
+      offsetMm,
+      entranceTargets,
+    );
+  }
 
   const left = isRoomWallLink(link)
-    ? offsetToWorldOnWall(room!, link.wall, span.startMm)
+    ? offsetToWorldOnWall(room!, link.wallIndex, span.startMm)
     : offsetToWorldOnHallwayWall(
         hallway!,
         link.segIndex,
@@ -396,7 +580,7 @@ function EndpointPlacementHandles({
         span.startMm,
       );
   const right = isRoomWallLink(link)
-    ? offsetToWorldOnWall(room!, link.wall, span.endMm)
+    ? offsetToWorldOnWall(room!, link.wallIndex, span.endMm)
     : offsetToWorldOnHallwayWall(
         hallway!,
         link.segIndex,
@@ -404,7 +588,7 @@ function EndpointPlacementHandles({
         span.endMm,
       );
   const center = isRoomWallLink(link)
-    ? offsetToWorldOnWall(room!, link.wall, link.offsetMm)
+    ? offsetToWorldOnWall(room!, link.wallIndex, link.offsetMm)
     : offsetToWorldOnHallwayWall(
         hallway!,
         link.segIndex,
@@ -445,6 +629,14 @@ function EndpointPlacementHandles({
         ) {
           onConfirmEnd();
         }
+        if (
+          role === "start" &&
+          kind === "center" &&
+          centerClickRef.current &&
+          onConfirmStart
+        ) {
+          onConfirmStart();
+        }
         onEnd?.();
         onPlacementDragEnd();
         document.body.style.cursor = "";
@@ -483,7 +675,7 @@ function EndpointPlacementHandles({
             if (room && isRoomWallLink(placement.link)) {
               const projected = offsetFromWallPointer(
                 room,
-                placement.link.wall,
+                placement.link.wallIndex,
                 xMm,
                 zMm,
                 placement.widthMm,
@@ -525,7 +717,7 @@ function EndpointPlacementHandles({
             if (room && isRoomWallLink(placement.link)) {
               const projected = offsetFromWallPointer(
                 room,
-                placement.link.wall,
+                placement.link.wallIndex,
                 xMm,
                 zMm,
                 placement.widthMm,
@@ -569,12 +761,17 @@ function EndpointPlacementHandles({
             if (room && isRoomWallLink(placement.link)) {
               const offsetMm = offsetFromWallPointer(
                 room,
-                placement.link.wall,
+                placement.link.wallIndex,
                 xMm,
                 zMm,
                 placement.widthMm,
               );
-              onPlacementChange(setPlacementCenter(room, placement, offsetMm));
+              onPlacementChange(
+                snapCenterPlacement(
+                  setPlacementCenter(room, placement, offsetMm),
+                  offsetMm,
+                ),
+              );
               return;
             }
             if (hallway && isHallwayWallLink(placement.link)) {
@@ -587,7 +784,10 @@ function EndpointPlacementHandles({
                 placement.widthMm,
               );
               onPlacementChange(
-                setHallwayPlacementCenter(hallway, placement, offsetMm),
+                snapCenterPlacement(
+                  setHallwayPlacementCenter(hallway, placement, offsetMm),
+                  offsetMm,
+                ),
               );
             }
           })
@@ -673,7 +873,7 @@ function HallwayDraftMeasureLabel({
           draft.preview.zMm * MM_TO_M,
         ]}
         center
-        zIndexRange={[900, 0]}
+        zIndexRange={[EDITOR_Z_SCENE_HTML, 0]}
         style={{ pointerEvents: "none" }}
       >
         <div
@@ -715,7 +915,7 @@ function HallwayDraftMeasureLabel({
     <Html
       position={[labelPoint.xMm * MM_TO_M, 0.35, labelPoint.zMm * MM_TO_M]}
       center
-      zIndexRange={[900, 0]}
+      zIndexRange={[EDITOR_Z_SCENE_HTML, 0]}
       style={{ pointerEvents: "none" }}
     >
       <div
@@ -732,11 +932,15 @@ export function HallwayDrawVisuals({
   rooms,
   hallways,
   draft,
+  snapPoints,
   unitPreference,
+  angleSnapMode = "ortho",
   showCeilings = false,
   onPlacementChange,
   onStartPullOut,
   onConfirmEndPlacement,
+  onConfirmStartEntrance,
+  onAlignSnapCommit,
   onPathPreview,
   onPathCommit,
   onPlacementDragEnd,
@@ -747,11 +951,15 @@ export function HallwayDrawVisuals({
   rooms: PlacedRoom[];
   hallways: Hallway[];
   draft: HallwayDrawDraft;
+  snapPoints: SnapPoint[];
   unitPreference: UnitPreference;
+  angleSnapMode?: RoomAngleSnapMode;
   showCeilings?: boolean;
   onPlacementChange: (placement: WallPlacement) => void;
   onStartPullOut: (preview: HallwayWaypoint) => void;
   onConfirmEndPlacement: () => void;
+  onConfirmStartEntrance: () => void;
+  onAlignSnapCommit: (snap: ExitAlignmentSnap) => void;
   onPathPreview: (xMm: number, zMm: number) => void;
   onPathCommit: () => void;
   onPlacementDragEnd: () => void;
@@ -759,9 +967,10 @@ export function HallwayDrawVisuals({
   disableOrbit: () => void;
   enableOrbit: () => void;
 }) {
+  const localRootRef = useRef<Group>(null);
   const previewPath = useMemo(
-    () => draftDisplayPath(rooms, hallways, draft),
-    [rooms, hallways, draft],
+    () => draftDisplayPath(rooms, hallways, draft, { angleSnapMode }),
+    [angleSnapMode, rooms, hallways, draft],
   );
 
   const openingLinks = useMemo(
@@ -769,7 +978,11 @@ export function HallwayDrawVisuals({
     [rooms, hallways, draft],
   );
 
-  const beginFloorDrag = useFloorPointerDrag(disableOrbit, enableOrbit);
+  const beginFloorDrag = useFloorPointerDrag(
+    disableOrbit,
+    enableOrbit,
+    localRootRef,
+  );
 
   const previewHeightMm = useMemo(() => {
     if (!draft.wallPlacement) return 2438;
@@ -808,11 +1021,47 @@ export function HallwayDrawVisuals({
     return false;
   }, [draft.wallPlacement, rooms, hallways]);
 
-  return (
-    <group renderOrder={900}>
-      <HallwayPreviewMeshes specs={previewSpecs} />
+  const showExitPortal =
+    draft.endPlacement &&
+    (draft.phase === "align-exit" || draft.phase === "dragging");
+  const showExitAlignment =
+    draft.endPlacement &&
+    draft.startPlacement &&
+    (draft.phase === "align-exit" || draft.phase === "dragging");
 
-      {draft.phase !== "idle" && (
+  const entranceGuides = useMemo(() => {
+    if (draft.phase === "idle") return [];
+    const targets = collectHallwayEntranceTargets(rooms, hallways, snapPoints);
+    return entranceGuidesForTargets(rooms, hallways, targets);
+  }, [rooms, hallways, snapPoints, draft.phase]);
+
+  const continuationTargets = useMemo(() => {
+    if (draft.phase === "idle") return [];
+    return collectHallwayContinuationTargets(hallways);
+  }, [hallways, draft.phase]);
+
+  const continuationGuides = useMemo(
+    () => continuationGuidesForTargets(continuationTargets),
+    [continuationTargets],
+  );
+
+  return (
+    <group ref={localRootRef}>
+    <group renderOrder={900}>
+      {continuationGuides.length > 0 && (
+        <ContinuationGuideVisual guides={continuationGuides} />
+      )}
+      {continuationTargets.length > 0 && (
+        <ContinuationAnchorMarkers targets={continuationTargets} />
+      )}
+      {entranceGuides.length > 0 && (
+        <SnapGuideVisual guides={entranceGuides} />
+      )}
+      {previewSpecs.length > 0 && (
+        <HallwayPreviewMeshes specs={previewSpecs} />
+      )}
+
+      {draft.phase !== "idle" && draft.phase !== "align-exit" && (
         <HallwayDraftMeasureLabel
           path={previewPath}
           draft={draft}
@@ -837,6 +1086,7 @@ export function HallwayDrawVisuals({
           hallways={hallways}
           placement={draft.wallPlacement}
           role={draft.phase === "placing-end" ? "end" : "start"}
+          snapPoints={snapPoints}
           onPlacementChange={onPlacementChange}
           onPullOut={
             draft.phase === "placing-start" ? onStartPullOut : undefined
@@ -844,7 +1094,53 @@ export function HallwayDrawVisuals({
           onConfirmEnd={
             draft.phase === "placing-end" ? onConfirmEndPlacement : undefined
           }
+          onConfirmStart={
+            draft.phase === "placing-start" ? onConfirmStartEntrance : undefined
+          }
           onPlacementDragEnd={onPlacementDragEnd}
+          disableOrbit={disableOrbit}
+          enableOrbit={enableOrbit}
+          floorLocalSpaceRef={localRootRef}
+        />
+      )}
+
+      {draft.phase === "align-exit" && draft.startPlacement && (
+        <EndpointPlacementHandles
+          rooms={rooms}
+          hallways={hallways}
+          placement={draft.startPlacement}
+          role="start"
+          snapPoints={snapPoints}
+          onPlacementChange={onPlacementChange}
+          onPullOut={onStartPullOut}
+          onPlacementDragEnd={onPlacementDragEnd}
+          disableOrbit={disableOrbit}
+          enableOrbit={enableOrbit}
+          floorLocalSpaceRef={localRootRef}
+        />
+      )}
+
+      {showExitPortal && draft.endPlacement && (
+        <EndpointPlacementHandles
+          rooms={rooms}
+          hallways={hallways}
+          placement={draft.endPlacement}
+          role="end"
+          snapPoints={snapPoints}
+          onPlacementChange={onPlacementChange}
+          onPlacementDragEnd={onPlacementDragEnd}
+          disableOrbit={disableOrbit}
+          enableOrbit={enableOrbit}
+          floorLocalSpaceRef={localRootRef}
+        />
+      )}
+
+      {showExitAlignment && (
+        <HallwayExitAlignmentMarkers
+          rooms={rooms}
+          hallways={hallways}
+          draft={draft}
+          onSnapCommit={onAlignSnapCommit}
           disableOrbit={disableOrbit}
           enableOrbit={enableOrbit}
         />
@@ -911,6 +1207,7 @@ export function HallwayDrawVisuals({
         </mesh>
       )}
     </group>
+    </group>
   );
 }
 
@@ -924,7 +1221,7 @@ export function OpenWallVisuals({
   hover: HallwayWaypoint | null;
   openingAnchor: {
     placementId: string;
-    wall: WallSide;
+    wallIndex: number;
     offsetMm: number;
   } | null;
   openingPreviewEnd: HallwayWaypoint | null;
@@ -952,7 +1249,7 @@ export function OpenWallVisuals({
           if (!room) return null;
           const point = offsetToWorldOnWall(
             room,
-            openingAnchor.wall,
+            openingAnchor.wallIndex,
             openingAnchor.offsetMm,
           );
           return (
@@ -976,7 +1273,7 @@ export function OpenWallVisuals({
           if (!room) return null;
           const start = offsetToWorldOnWall(
             room,
-            openingAnchor.wall,
+            openingAnchor.wallIndex,
             openingAnchor.offsetMm,
           );
           const y = room.heightMm * MM_TO_M * 0.5;
@@ -1021,7 +1318,7 @@ export function hallwaySuppressWallKey(
   }
   const link = draft.wallPlacement.link;
   if (isRoomWallLink(link)) {
-    return `${link.placementId}:${link.wall}`;
+    return `${link.placementId}:${link.wallIndex}`;
   }
   if (isHallwayWallLink(link)) {
     return hallwayWallHighlightKey(link.hallwayId, link.segIndex, link.side);

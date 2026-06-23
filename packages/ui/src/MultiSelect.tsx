@@ -76,14 +76,20 @@ export function MultiSelect({
         aria-expanded={open}
         aria-controls={listboxId}
         onClick={() => setOpen((current) => !current)}
-        className={`flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border bg-surface px-3 py-2.5 text-left text-sm text-text transition-all duration-200 ease-out hover:border-primary/30 ${
+        className={`flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border bg-surface py-2.5 text-left text-sm text-text transition-all duration-200 ease-out hover:border-primary/30 ${
           open ? "border-primary/40 shadow-sm" : "border-border"
-        }`}
+        } px-3.5`}
       >
-        <span className={values.length === 0 ? "text-muted" : undefined}>
+        <span
+          className={`min-w-0 flex-1 truncate ${
+            values.length === 0 ? "text-muted" : undefined
+          }`}
+        >
           {triggerLabel}
         </span>
-        <AccordionCaret open={open} />
+        <span className="flex shrink-0 items-center pl-2 pr-0.5">
+          <AccordionCaret open={open} />
+        </span>
       </button>
 
       <PopoverPanel

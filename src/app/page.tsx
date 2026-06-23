@@ -1,5 +1,6 @@
 import { TOOLS } from "@/core/registry/tools";
 import { Button } from "@nexus/next";
+import { PAGE_CONTAINER } from "@/shared/ui/page-container";
 import { ToolCard } from "@/shared/ui/ToolCard";
 import { BlobBackground } from "@/shared/ui/illustrations/BlobBackground";
 import { HeroIllustration } from "@/shared/ui/illustrations/HeroIllustration";
@@ -31,7 +32,7 @@ export default function HomePage() {
       {/* Hero */}
       <section className="relative overflow-hidden">
         <BlobBackground />
-        <div className="relative mx-auto grid max-w-6xl gap-10 px-4 py-16 sm:px-6 lg:grid-cols-2 lg:items-center lg:py-24">
+        <div className={`relative ${PAGE_CONTAINER} grid gap-10 py-16 lg:grid-cols-2 lg:items-center lg:py-24`}>
           <div className="space-y-6">
             <p className="inline-flex rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
               Local-first personal tools
@@ -58,7 +59,7 @@ export default function HomePage() {
       </section>
 
       {/* Tools grid */}
-      <section className="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+      <section className={`${PAGE_CONTAINER} pb-20`}>
         <div className="mb-8 space-y-2">
           <h2 className="text-2xl font-bold text-text">Tools</h2>
           <p className="text-muted">

@@ -1,6 +1,11 @@
 import type { Hallway, HallwayWaypoint } from "@/tools/room-coat/types/state";
+import { DEFAULT_ROOM_COAT } from "@/tools/room-coat/types/state";
 import type { RoomMeshOptions, SurfaceMeshSpec } from "@/tools/room-coat/lib/room-geometry";
-import { hallwaySegmentAxis } from "@/tools/room-coat/lib/hallway-draft";
+import { FLOOR_SURFACE_Y_M } from "@/tools/room-coat/lib/room-geometry";
+import {
+  hallwaySegmentAxis,
+  simplifyHallwayWaypoints,
+} from "@/tools/room-coat/lib/hallway-draft";
 import { solidHallwayWallSegments } from "@/tools/room-coat/lib/hallway-openings";
 import { logHallway } from "@/tools/room-coat/lib/hallway-debug";
 
@@ -199,6 +204,76 @@ function pathAxisSpan(
   return { lo: pathLo, hi: pathHi, lengthMm, centerMm: (pathLo + pathHi) / 2 };
 }
 
+/** Floor span extends into turn junctions so each leg measures wall-to-wall. */
+function pathFloorAxisSpan(
+  pathStartMm: number,
+  pathEndMm: number,
+  trim: SegmentTrim,
+  halfWidthMm: number,
+  segIndex: number,
+  segmentCount: number,
+): { lo: number; hi: number; lengthMm: number; centerMm: number } | null {
+  const span = pathAxisSpan(pathStartMm, pathEndMm, trim, null, halfWidthMm);
+  if (!span) return null;
+
+  const dir = pathEndMm >= pathStartMm ? 1 : -1;
+  let lo = span.lo;
+  let hi = span.hi;
+
+  if (segIndex > 0) {
+    if (dir > 0) lo -= halfWidthMm;
+    else hi += halfWidthMm;
+  }
+  if (segIndex < segmentCount - 1) {
+    if (dir > 0) hi += halfWidthMm;
+    else lo -= halfWidthMm;
+  }
+
+  const lengthMm = hi - lo;
+  if (lengthMm < 80) return null;
+  return { lo, hi, lengthMm, centerMm: (lo + hi) / 2 };
+}
+
+export function hallwayTurnCornerCount(points: HallwayWaypoint[]): number {
+  if (points.length < 3) return 0;
+  let corners = 0;
+  for (let i = 1; i < points.length - 1; i++) {
+    const prev = segmentDirection(points[i - 1]!, points[i]!);
+    const next = segmentDirection(points[i]!, points[i + 1]!);
+    if (!prev || !next) continue;
+    const pv =
+      prev.axis === "horizontal"
+        ? { x: prev.sign, z: 0 }
+        : { x: 0, z: prev.sign };
+    const nv =
+      next.axis === "horizontal"
+        ? { x: next.sign, z: 0 }
+        : { x: 0, z: next.sign };
+    if (cross2d(pv.x, pv.z, nv.x, nv.z) !== 0) corners += 1;
+  }
+  return corners;
+}
+
+/** Total hallway floor area without double-counting turn junction overlaps. */
+export function hallwayFloorAreaMm2(hallway: Hallway): number {
+  const { points } = simplifyHallwayWaypoints(hallway.waypointsMm);
+  if (points.length < 2) return 0;
+
+  const widthMm = hallway.widthMm;
+  let centerlineLengthMm = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    centerlineLengthMm += Math.hypot(
+      points[i + 1]!.xMm - points[i]!.xMm,
+      points[i + 1]!.zMm - points[i]!.zMm,
+    );
+  }
+
+  const corners = hallwayTurnCornerCount(points);
+  return Math.round(
+    widthMm * centerlineLengthMm + widthMm * widthMm - corners * widthMm * widthMm,
+  );
+}
+
 function hallwayWallSurfaceId(
   prefix: string,
   wallSide: WallSideIdx,
@@ -308,6 +383,7 @@ function verticalWallSpecs(
 function horizontalSegmentSpecs(
   hallway: Hallway,
   segIndex: number,
+  segmentCount: number,
   start: HallwayWaypoint,
   end: HallwayWaypoint,
   trim: SegmentTrim,
@@ -318,7 +394,14 @@ function horizontalSegmentSpecs(
   const half = hallway.widthMm / 2;
   const zMm = start.zMm;
 
-  const floorSpan = pathAxisSpan(start.xMm, end.xMm, trim, null, half);
+  const floorSpan = pathFloorAxisSpan(
+    start.xMm,
+    end.xMm,
+    trim,
+    half,
+    segIndex,
+    segmentCount,
+  );
   if (!floorSpan) return [];
 
   const len = floorSpan.lengthMm * MM;
@@ -330,7 +413,7 @@ function horizontalSegmentSpecs(
     {
       surfaceId: `${prefix}:floor`,
       category: "floor",
-      position: [cx, 0.001, cz],
+      position: [cx, FLOOR_SURFACE_Y_M, cz],
       rotation: [-Math.PI / 2, 0, 0],
       size: [len, w],
       color: FLOOR_COLOR,
@@ -370,6 +453,7 @@ function horizontalSegmentSpecs(
 function verticalSegmentSpecs(
   hallway: Hallway,
   segIndex: number,
+  segmentCount: number,
   start: HallwayWaypoint,
   end: HallwayWaypoint,
   trim: SegmentTrim,
@@ -380,7 +464,14 @@ function verticalSegmentSpecs(
   const half = hallway.widthMm / 2;
   const xMm = start.xMm;
 
-  const floorSpan = pathAxisSpan(start.zMm, end.zMm, trim, null, half);
+  const floorSpan = pathFloorAxisSpan(
+    start.zMm,
+    end.zMm,
+    trim,
+    half,
+    segIndex,
+    segmentCount,
+  );
   if (!floorSpan) return [];
 
   const len = floorSpan.lengthMm * MM;
@@ -392,7 +483,7 @@ function verticalSegmentSpecs(
     {
       surfaceId: `${prefix}:floor`,
       category: "floor",
-      position: [cx, 0.001, cz],
+      position: [cx, FLOOR_SURFACE_Y_M, cz],
       rotation: [-Math.PI / 2, 0, 0],
       size: [w, len],
       color: FLOOR_COLOR,
@@ -429,11 +520,10 @@ function verticalSegmentSpecs(
   return specs;
 }
 
-function cornerPatchSpecs(
+function cornerCeilingPatchSpecs(
   hallway: Hallway,
   point: HallwayWaypoint,
   cornerIndex: number,
-  showCeiling: boolean,
 ): SurfaceMeshSpec[] {
   const w = hallway.widthMm * MM;
   const h = hallway.heightMm * MM;
@@ -441,13 +531,43 @@ function cornerPatchSpecs(
   const cz = point.zMm * MM;
   const prefix = `${hallway.id}:corner:${cornerIndex}`;
 
+  return [
+    {
+      surfaceId: `${prefix}:ceiling`,
+      category: "ceiling",
+      position: [cx, h, cz],
+      rotation: [-Math.PI / 2, 0, 0],
+      size: [w, w],
+    },
+  ];
+}
+
+function diagonalSegmentSpecs(
+  hallway: Hallway,
+  segIndex: number,
+  start: HallwayWaypoint,
+  end: HallwayWaypoint,
+  showCeiling: boolean,
+): SurfaceMeshSpec[] {
+  const dx = end.xMm - start.xMm;
+  const dz = end.zMm - start.zMm;
+  const lenM = Math.hypot(dx, dz) * MM;
+  if (lenM < 0.05) return [];
+
+  const w = hallway.widthMm * MM;
+  const h = hallway.heightMm * MM;
+  const cx = ((start.xMm + end.xMm) / 2) * MM;
+  const cz = ((start.zMm + end.zMm) / 2) * MM;
+  const rotY = Math.atan2(dx, dz);
+  const prefix = `${hallway.id}:seg:${segIndex}`;
+
   const specs: SurfaceMeshSpec[] = [
     {
       surfaceId: `${prefix}:floor`,
       category: "floor",
-      position: [cx, 0.002, cz],
-      rotation: [-Math.PI / 2, 0, 0],
-      size: [w, w],
+      position: [cx, FLOOR_SURFACE_Y_M, cz],
+      rotation: [-Math.PI / 2, rotY, 0],
+      size: [lenM, w],
       color: FLOOR_COLOR,
     },
   ];
@@ -457,8 +577,8 @@ function cornerPatchSpecs(
       surfaceId: `${prefix}:ceiling`,
       category: "ceiling",
       position: [cx, h, cz],
-      rotation: [-Math.PI / 2, 0, 0],
-      size: [w, w],
+      rotation: [-Math.PI / 2, rotY, 0],
+      size: [lenM, w],
     });
   }
 
@@ -468,6 +588,7 @@ function cornerPatchSpecs(
 function specsForSegment(
   hallway: Hallway,
   segIndex: number,
+  segmentCount: number,
   a: HallwayWaypoint,
   b: HallwayWaypoint,
   trim: SegmentTrim,
@@ -475,13 +596,31 @@ function specsForSegment(
 ): SurfaceMeshSpec[] {
   const [start, end] = snapSegmentEndpoints(a, b);
   const axis = hallwaySegmentAxis(start, end);
-  if (!axis) return [];
-
-  if (axis === "horizontal") {
-    return horizontalSegmentSpecs(hallway, segIndex, start, end, trim, showCeiling);
+  if (!axis) {
+    return diagonalSegmentSpecs(hallway, segIndex, start, end, showCeiling);
   }
 
-  return verticalSegmentSpecs(hallway, segIndex, start, end, trim, showCeiling);
+  if (axis === "horizontal") {
+    return horizontalSegmentSpecs(
+      hallway,
+      segIndex,
+      segmentCount,
+      start,
+      end,
+      trim,
+      showCeiling,
+    );
+  }
+
+  return verticalSegmentSpecs(
+    hallway,
+    segIndex,
+    segmentCount,
+    start,
+    end,
+    trim,
+    showCeiling,
+  );
 }
 
 export interface HallwaySegmentWall {
@@ -499,7 +638,7 @@ export interface HallwaySegmentWall {
 
 /** World-space layout of each selectable hallway segment wall. */
 export function listHallwaySegmentWalls(hallway: Hallway): HallwaySegmentWall[] {
-  const points = hallway.waypointsMm;
+  const { points } = simplifyHallwayWaypoints(hallway.waypointsMm);
   if (points.length < 2) return [];
 
   const half = hallway.widthMm / 2;
@@ -552,21 +691,30 @@ export function hallwayPreviewFloorSegments(
   points: HallwayWaypoint[],
   widthMm: number,
 ): Array<{ x1Mm: number; z1Mm: number; x2Mm: number; z2Mm: number }> {
-  if (points.length < 2) return [];
+  const { points: normalized } = simplifyHallwayWaypoints(points);
+  if (normalized.length < 2) return [];
 
   const half = widthMm / 2;
-  const trims = computeSegmentTrims(points, widthMm);
+  const trims = computeSegmentTrims(normalized, widthMm);
   const segments: Array<{ x1Mm: number; z1Mm: number; x2Mm: number; z2Mm: number }> =
     [];
+  const segmentCount = normalized.length - 1;
 
-  for (let i = 0; i < points.length - 1; i++) {
-    const [start, end] = snapSegmentEndpoints(points[i], points[i + 1]);
+  for (let i = 0; i < segmentCount; i++) {
+    const [start, end] = snapSegmentEndpoints(normalized[i]!, normalized[i + 1]!);
     const axis = hallwaySegmentAxis(start, end);
     if (!axis) continue;
 
-    const trim = trims[i];
+    const trim = trims[i]!;
     if (axis === "horizontal") {
-      const span = pathAxisSpan(start.xMm, end.xMm, trim, null, half);
+      const span = pathFloorAxisSpan(
+        start.xMm,
+        end.xMm,
+        trim,
+        half,
+        i,
+        segmentCount,
+      );
       if (!span) continue;
       segments.push({
         x1Mm: span.lo,
@@ -575,7 +723,14 @@ export function hallwayPreviewFloorSegments(
         z2Mm: start.zMm,
       });
     } else {
-      const span = pathAxisSpan(start.zMm, end.zMm, trim, null, half);
+      const span = pathFloorAxisSpan(
+        start.zMm,
+        end.zMm,
+        trim,
+        half,
+        i,
+        segmentCount,
+      );
       if (!span) continue;
       segments.push({
         x1Mm: start.xMm,
@@ -603,16 +758,12 @@ export function buildHallwayPreviewSpecs(
     {
       id: PREVIEW_HALLWAY_ID,
       unitId: "",
+      floorId: "",
       name: "Preview",
       widthMm,
       heightMm,
       waypointsMm: points,
-      coat: {
-        wallPaintId: null,
-        baseboardPaintId: null,
-        ceilingPaintId: null,
-        doorPaintId: null,
-      },
+      coat: { ...DEFAULT_ROOM_COAT },
       surfaceOverrides: {},
       wallOpenings: [],
     },
@@ -627,21 +778,24 @@ export function buildHallwaySurfaceSpecs(
   if (hallway.waypointsMm.length < 2) return [];
 
   const showCeiling = options.showCeiling ?? false;
-  const points = hallway.waypointsMm;
+  const { points } = simplifyHallwayWaypoints(hallway.waypointsMm);
   if (points.length < 2) return [];
 
-  const trims = computeSegmentTrims(points, hallway.widthMm);
+  const meshHallway = { ...hallway, waypointsMm: points };
+  const trims = computeSegmentTrims(points, meshHallway.widthMm);
   const specs: SurfaceMeshSpec[] = [];
   let builtSegments = 0;
   let skippedSegments = 0;
+  const segmentCount = points.length - 1;
 
-  for (let i = 0; i < points.length - 1; i++) {
+  for (let i = 0; i < segmentCount; i++) {
     const segSpecs = specsForSegment(
-      hallway,
+      meshHallway,
       i,
-      points[i],
-      points[i + 1],
-      trims[i],
+      segmentCount,
+      points[i]!,
+      points[i + 1]!,
+      trims[i]!,
       showCeiling,
     );
     if (segSpecs.length === 0) {
@@ -658,8 +812,10 @@ export function buildHallwaySurfaceSpecs(
     specs.push(...segSpecs);
   }
 
-  for (let i = 1; i < points.length - 1; i++) {
-    specs.push(...cornerPatchSpecs(hallway, points[i], i, showCeiling));
+  if (showCeiling) {
+    for (let i = 1; i < points.length - 1; i++) {
+      specs.push(...cornerCeilingPatchSpecs(meshHallway, points[i]!, i));
+    }
   }
 
   logHallway("built mesh specs", {
@@ -674,4 +830,68 @@ export function buildHallwaySurfaceSpecs(
   });
 
   return specs;
+}
+
+export interface HallwayFloorGridRect {
+  centerXM: number;
+  centerZM: number;
+  widthM: number;
+  depthM: number;
+}
+
+/** Non-overlapping floor grid tiles aligned to extended hallway segment floors. */
+export function hallwayFloorGridRects(hallway: Hallway): HallwayFloorGridRect[] {
+  const { points } = simplifyHallwayWaypoints(hallway.waypointsMm);
+  if (points.length < 2) return [];
+
+  const half = hallway.widthMm / 2;
+  const widthM = hallway.widthMm * MM;
+  const trims = computeSegmentTrims(points, hallway.widthMm);
+  const rects: HallwayFloorGridRect[] = [];
+  const segmentCount = points.length - 1;
+
+  for (let index = 0; index < segmentCount; index += 1) {
+    const [start, end] = snapSegmentEndpoints(points[index]!, points[index + 1]!);
+    const axis = hallwaySegmentAxis(start, end);
+    if (!axis) continue;
+
+    const trim = trims[index]!;
+
+    if (axis === "horizontal") {
+      const span = pathFloorAxisSpan(
+        start.xMm,
+        end.xMm,
+        trim,
+        half,
+        index,
+        segmentCount,
+      );
+      if (!span) continue;
+      rects.push({
+        centerXM: ((span.lo + span.hi) / 2) * MM,
+        centerZM: start.zMm * MM,
+        widthM: span.lengthMm * MM,
+        depthM: widthM,
+      });
+      continue;
+    }
+
+    const span = pathFloorAxisSpan(
+      start.zMm,
+      end.zMm,
+      trim,
+      half,
+      index,
+      segmentCount,
+    );
+    if (!span) continue;
+    rects.push({
+      centerXM: start.xMm * MM,
+      centerZM: ((span.lo + span.hi) / 2) * MM,
+      widthM,
+      depthM: span.lengthMm * MM,
+    });
+  }
+
+  return rects;
 }

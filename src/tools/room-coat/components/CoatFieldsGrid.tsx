@@ -5,6 +5,7 @@ import {
   defaultCoatFieldLabel,
 } from "@/tools/room-coat/lib/build-surfaces";
 import { PaintPicker } from "@/tools/room-coat/components/PaintPicker";
+import { FloorFinishPicker } from "@/tools/room-coat/components/FloorFinishPicker";
 import type { Paint, RoomCoat } from "@/tools/room-coat/types/state";
 
 interface CoatFieldsGridProps {
@@ -15,7 +16,10 @@ interface CoatFieldsGridProps {
 }
 
 const COAT_FIELDS: {
-  key: keyof RoomCoat;
+  key: keyof Pick<
+    RoomCoat,
+    "wallPaintId" | "baseboardPaintId" | "ceilingPaintId" | "doorPaintId"
+  >;
   category: "wall" | "baseboard" | "ceiling" | "door";
 }[] = [
   { key: "wallPaintId", category: "wall" },
@@ -31,20 +35,39 @@ export function CoatFieldsGrid({
   labelStyle = "default",
 }: CoatFieldsGridProps) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {COAT_FIELDS.map(({ key, category }) => (
-        <PaintPicker
-          key={key}
-          label={
-            labelStyle === "default"
-              ? defaultCoatFieldLabel(category)
-              : coatCategoryLabel(category)
-          }
-          paints={paints}
-          value={coat[key]}
-          onChange={(paintId) => onChange({ ...coat, [key]: paintId })}
-        />
-      ))}
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        {COAT_FIELDS.map(({ key, category }) => (
+          <PaintPicker
+            key={key}
+            label={
+              labelStyle === "default"
+                ? defaultCoatFieldLabel(category)
+                : coatCategoryLabel(category)
+            }
+            paints={paints}
+            value={coat[key]}
+            onChange={(paintId) => onChange({ ...coat, [key]: paintId })}
+            fullWidth
+          />
+        ))}
+      </div>
+      <FloorFinishPicker
+        typeLabel={
+          labelStyle === "default" ? "Default Floor" : coatCategoryLabel("floor")
+        }
+        finishType={coat.floorFinishType}
+        variantId={coat.floorFinishVariantId}
+        onChange={(finishType, variantId) =>
+          onChange({
+            ...coat,
+            floorFinishType: finishType,
+            floorFinishVariantId: variantId,
+          })
+        }
+        allowUnsetType
+        typeUnsetLabel="Unit default"
+      />
     </div>
   );
 }

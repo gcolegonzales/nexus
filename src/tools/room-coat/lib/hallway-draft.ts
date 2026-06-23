@@ -1,7 +1,9 @@
+import { logHallway } from "@/tools/room-coat/lib/hallway-debug";
 import type {
   Hallway,
   HallwayWaypoint,
   PlacedRoom,
+  SnapPoint,
   WallOpening,
   WallSide,
 } from "@/tools/room-coat/types/state";
@@ -20,7 +22,22 @@ import {
 } from "@/tools/room-coat/lib/hallway-wall-hit";
 import { listHallwaySegmentWalls } from "@/tools/room-coat/lib/hallway-geometry";
 import { openingsForHallwayWall } from "@/tools/room-coat/lib/hallway-openings";
-import { logHallway } from "@/tools/room-coat/lib/hallway-debug";
+import {
+  collectHallwayEntranceTargets,
+  collectHallwayContinuationTargets,
+  resolveHallwayDrawLineSnap,
+  shouldSnapPointToEntranceCenter,
+  snapEndpointToEntrance,
+  targetToPlacement,
+  type HallwayEntranceLineSnap,
+} from "@/tools/room-coat/lib/hallway-entrance-snaps";
+import {
+  linkApproachAxis,
+  linkOutwardNormal,
+  linkOutwardSign,
+  snapToAngleMode,
+  type RoomAngleSnapMode,
+} from "@/tools/room-coat/lib/room-shape";
 import {
   findWallHit,
   offsetToWorldOnWall,
@@ -54,6 +71,8 @@ export { createWallPlacementFromHallwayHit, findHallwayWallHit };
 export type HallwayDrawPhase =
   | "idle"
   | "placing-start"
+  | "pick-end"
+  | "align-exit"
   | "placing-end"
   | "dragging"
   | "ready";
@@ -72,6 +91,10 @@ export interface HallwayDrawDraft {
   links: Array<WallLink | null>;
   preview: HallwayWaypoint | null;
   wallPlacement: WallPlacement | null;
+  /** Fixed entrance placement while picking the exit wall. */
+  startPlacement: WallPlacement | null;
+  /** Fixed exit placement while aligning the path between portals. */
+  endPlacement: WallPlacement | null;
 }
 
 export const MIN_HALLWAY_WIDTH_MM = 600;
@@ -92,15 +115,21 @@ export function createHallwayDrawDraft(): HallwayDrawDraft {
     links: [],
     preview: null,
     wallPlacement: null,
+    startPlacement: null,
+    endPlacement: null,
   };
 }
 
 export function draftHint(draft: HallwayDrawDraft): string {
   switch (draft.phase) {
     case "idle":
-      return "Click a room wall to begin. Drag the gold handle to slide along the wall, cyan handles for width, then drag the arrow handle out to start the path.";
+      return "Click a room wall for entrance A — snaps to orange door markers. Adjust opening, then pick the exit wall.";
     case "placing-start":
-      return "Gold = slide opening · cyan = width · drag the purple arrow outward (away from the room) to begin the path.";
+      return "Entrance A: gold = slide along wall · cyan = width · click green center or Pick exit wall when ready. Purple arrow = manual path instead.";
+    case "pick-end":
+      return "Entrance A set. Click the exit wall (entrance B) — snaps to door markers.";
+    case "align-exit":
+      return "Both portals set. Click a green snap guide or drag the purple arrow — hallway draws only after you pick a route.";
     case "placing-end":
       return "Orange outline = wall cutout. Adjust the opening, then click Create hallway or the green center handle.";
     case "dragging":
@@ -114,33 +143,37 @@ export function draftHint(draft: HallwayDrawDraft): string {
 
 export function resolveHallwayExitNormal(
   room: PlacedRoom,
-  wall: WallSide,
+  wallIndex: number,
   offsetMm: number,
   approachFrom?: HallwayWaypoint,
 ): { x: number; z: number } {
-  const outward = wallOutwardNormal(wall);
+  const outward = linkOutwardNormal(room, wallIndex);
   if (!approachFrom) {
     return { x: outward.xMm, z: outward.zMm };
   }
 
-  const onWall = offsetToWorldOnWall(room, wall, offsetMm);
-  if (wallApproachAxis(wall) === "z") {
+  const onWall = offsetToWorldOnWall(room, wallIndex, offsetMm);
+  if (linkApproachAxis(room, wallIndex) === "z") {
     const dz = approachFrom.zMm - onWall.z;
     const sign =
-      Math.abs(dz) > 20 ? (Math.sign(dz) as 1 | -1) : wallOutwardSign(wall);
+      Math.abs(dz) > 20
+        ? (Math.sign(dz) as 1 | -1)
+        : linkOutwardSign(room, wallIndex);
     return { x: 0, z: sign };
   }
 
   const dx = approachFrom.xMm - onWall.x;
   const sign =
-    Math.abs(dx) > 20 ? (Math.sign(dx) as 1 | -1) : wallOutwardSign(wall);
+    Math.abs(dx) > 20
+      ? (Math.sign(dx) as 1 | -1)
+      : linkOutwardSign(room, wallIndex);
   return { x: sign, z: 0 };
 }
 
 export function createWallPlacementFromHit(
   room: PlacedRoom,
   hit: {
-    wall: WallSide;
+    wallIndex: number;
     offsetMm: number;
     faceNormalX?: number;
     faceNormalZ?: number;
@@ -148,10 +181,10 @@ export function createWallPlacementFromHit(
   widthMm: number,
   approachFrom?: HallwayWaypoint,
 ): WallPlacement {
-  const clamped = clampWallOffset(room, hit.wall, hit.offsetMm, widthMm);
-  const exit = resolveHallwayExitNormal(room, hit.wall, clamped, approachFrom);
+  const clamped = clampWallOffset(room, hit.wallIndex, hit.offsetMm, widthMm);
+  const exit = resolveHallwayExitNormal(room, hit.wallIndex, clamped, approachFrom);
   return {
-    link: roomWallLink(room.placementId, hit.wall, clamped),
+    link: roomWallLink(room.placementId, hit.wallIndex, clamped),
     widthMm,
     faceNormalX: exit.x,
     faceNormalZ: exit.z,
@@ -189,7 +222,7 @@ export function setPlacementCenter(
       ...placement.link,
       offsetMm: clampWallOffset(
         room,
-        placement.link.wall,
+        placement.link.wallIndex,
         offsetMm,
         placement.widthMm,
       ),
@@ -199,14 +232,14 @@ export function setPlacementCenter(
 
 export function offsetFromWallPointer(
   room: PlacedRoom,
-  wall: WallSide,
+  wallIndex: number,
   xMm: number,
   zMm: number,
   widthMm: number,
 ): number {
-  const projected = projectPointToWall(room, wall, xMm, zMm);
+  const projected = projectPointToWall(room, wallIndex, xMm, zMm);
   if (!projected) return 0;
-  return clampWallOffset(room, wall, projected.offsetMm, widthMm);
+  return clampWallOffset(room, wallIndex, projected.offsetMm, widthMm);
 }
 
 export function setPlacementSpan(
@@ -217,7 +250,7 @@ export function setPlacementSpan(
 ): WallPlacement {
   if (!isRoomWallLink(placement.link)) return placement;
   const link = placement.link;
-  const edge = wallEdges(room).find((item) => item.wall === link.wall);
+  const edge = wallEdges(room).find((item) => item.wallIndex === link.wallIndex);
   if (!edge) return placement;
   const lo = Math.max(0, Math.min(startMm, endMm));
   const hi = Math.min(edge.lengthMm, Math.max(startMm, endMm));
@@ -228,7 +261,7 @@ export function setPlacementSpan(
     widthMm,
     link: {
       ...link,
-      offsetMm: clampWallOffset(room, link.wall, offsetMm, widthMm),
+      offsetMm: clampWallOffset(room, link.wallIndex, offsetMm, widthMm),
     },
   };
 }
@@ -322,13 +355,13 @@ export function pullPointFromWallStart(
 
   const exit = resolveHallwayExitNormal(
     room,
-    placement.link.wall,
+    placement.link.wallIndex,
     placement.link.offsetMm,
   );
-  const axis = wallApproachAxis(placement.link.wall);
+  const axis = linkApproachAxis(room, placement.link.wallIndex);
 
   if (axis === "z") {
-    const exitSign = (exit.z || wallOutwardSign(placement.link.wall)) as 1 | -1;
+    const exitSign = (exit.z || linkOutwardSign(room, placement.link.wallIndex)) as 1 | -1;
     const delta = cursorZ - start.zMm;
     const outward =
       Math.abs(delta) < MIN_SEGMENT_MM
@@ -339,7 +372,7 @@ export function pullPointFromWallStart(
     return { xMm: start.xMm, zMm: Math.round(start.zMm + outward) };
   }
 
-  const exitSign = (exit.x || wallOutwardSign(placement.link.wall)) as 1 | -1;
+  const exitSign = (exit.x || linkOutwardSign(room, placement.link.wallIndex)) as 1 | -1;
   const delta = cursorX - start.xMm;
   const outward =
     Math.abs(delta) < MIN_SEGMENT_MM
@@ -374,7 +407,7 @@ export function pointFromLink(
   room: PlacedRoom,
   link: RoomWallLink,
 ): HallwayWaypoint {
-  const world = offsetToWorldOnWall(room, link.wall, link.offsetMm);
+  const world = offsetToWorldOnWall(room, link.wallIndex, link.offsetMm);
   return { xMm: world.x, zMm: world.z };
 }
 
@@ -411,7 +444,7 @@ export function centerlinePointFromWallHit(
   } else if (approachFrom) {
     const dx = approachFrom.xMm - onWall.xMm;
     const dz = approachFrom.zMm - onWall.zMm;
-    const normal = wallOutwardNormal(link.wall);
+    const normal = linkOutwardNormal(room, link.wallIndex);
     const dot = dx * normal.xMm + dz * normal.zMm;
     const side = dot >= 0 ? 1 : -1;
     centerline = {
@@ -419,8 +452,8 @@ export function centerlinePointFromWallHit(
       zMm: onWall.zMm + normal.zMm * side * half,
     };
   } else {
-    const sign = wallOutwardSign(link.wall);
-    if (wallApproachAxis(link.wall) === "z") {
+    const sign = linkOutwardSign(room, link.wallIndex);
+    if (linkApproachAxis(room, link.wallIndex) === "z") {
       centerline = { xMm: onWall.xMm, zMm: onWall.zMm + sign * half };
     } else {
       centerline = { xMm: onWall.xMm + sign * half, zMm: onWall.zMm };
@@ -428,7 +461,7 @@ export function centerlinePointFromWallHit(
   }
 
   logHallway("centerline from wall", {
-    wall: link.wall,
+    wall: link.wallIndex,
     offsetMm: link.offsetMm,
     onWall,
     centerline,
@@ -454,7 +487,7 @@ export function axisAlignedWallCenterline(
     hit,
     adjacent,
   );
-  if (wallApproachAxis(link.wall) === "z") {
+  if (linkApproachAxis(room, link.wallIndex) === "z") {
     return { xMm: adjacent.xMm, zMm: centerline.zMm };
   }
   return { xMm: centerline.xMm, zMm: adjacent.zMm };
@@ -560,7 +593,7 @@ function appendEndWallPoints(
   }
 
   const bend =
-    isRoomWallLink(link) && wallApproachAxis(link.wall) === "z"
+    room && isRoomWallLink(link) && linkApproachAxis(room, link.wallIndex) === "z"
       ? { xMm: approach.xMm, zMm: wallPt.zMm }
       : isRoomWallLink(link)
         ? { xMm: wallPt.xMm, zMm: approach.zMm }
@@ -600,11 +633,11 @@ export function centerlinePointFromLink(
 
 export function clampWallOffset(
   room: PlacedRoom,
-  wall: WallSide,
+  wallIndex: number,
   offsetMm: number,
   widthMm: number,
 ): number {
-  const edge = wallEdges(room).find((item) => item.wall === wall);
+  const edge = wallEdges(room).find((item) => item.wallIndex === wallIndex);
   if (!edge) return offsetMm;
   const half = widthMm / 2 + 50;
   return Math.max(half, Math.min(edge.lengthMm - half, offsetMm));
@@ -615,7 +648,7 @@ export function openingSpanForLink(
   link: RoomWallLink,
   widthMm: number,
 ): { startMm: number; endMm: number } {
-  const edge = wallEdges(room).find((item) => item.wall === link.wall);
+  const edge = wallEdges(room).find((item) => item.wallIndex === link.wallIndex);
   if (!edge) return { startMm: 0, endMm: widthMm };
   const half = widthMm / 2;
   return {
@@ -642,7 +675,7 @@ export function linkNeedsOpening(
   widthMm: number,
 ): { startMm: number; endMm: number } | null {
   const span = openingSpanForLink(room, link, widthMm);
-  const covered = openingsForWall(room, link.wall).some((opening) =>
+  const covered = openingsForWall(room, link.wallIndex).some((opening) =>
     openingCoversSpan(opening, span.startMm, span.endMm),
   );
   return covered ? null : span;
@@ -666,7 +699,7 @@ export function hallwayLinkNeedsOpening(
 export type RoomHallwayConnectionOpening = {
   kind: "room";
   placementId: string;
-  wall: WallSide;
+  wallIndex: number;
   startMm: number;
   endMm: number;
 };
@@ -687,7 +720,7 @@ export type HallwayConnectionOpening =
 export function projectHitToLink(
   room: PlacedRoom,
   hit: {
-    wall: WallSide;
+    wallIndex: number;
     offsetMm: number;
     pointerXMm?: number;
     pointerZMm?: number;
@@ -696,8 +729,8 @@ export function projectHitToLink(
   },
   widthMm: number,
 ): { point: HallwayWaypoint; link: WallLink } {
-  const clamped = clampWallOffset(room, hit.wall, hit.offsetMm, widthMm);
-  const link = roomWallLink(room.placementId, hit.wall, clamped);
+  const clamped = clampWallOffset(room, hit.wallIndex, hit.offsetMm, widthMm);
+  const link = roomWallLink(room.placementId, hit.wallIndex, clamped);
   return {
     point: centerlinePointFromWallHit(room, link, widthMm, hit),
     link,
@@ -727,9 +760,9 @@ function orthogonalFromWallStart(
   cursorZ: number,
 ): HallwayWaypoint {
   const onWall = pointFromLink(room, link);
-  const axis = wallApproachAxis(link.wall);
+  const axis = linkApproachAxis(room, link.wallIndex);
   if (axis === "z") {
-    const exitSign = Math.sign(start.zMm - onWall.zMm) || wallOutwardSign(link.wall);
+    const exitSign = Math.sign(start.zMm - onWall.zMm) || linkOutwardSign(room, link.wallIndex);
     const delta = cursorZ - start.zMm;
     const outward =
       Math.abs(delta) < MIN_SEGMENT_MM
@@ -739,7 +772,7 @@ function orthogonalFromWallStart(
           : exitSign * Math.max(MIN_SEGMENT_MM, Math.abs(delta));
     return { xMm: start.xMm, zMm: Math.round(start.zMm + outward) };
   }
-  const exitSign = Math.sign(start.xMm - onWall.xMm) || wallOutwardSign(link.wall);
+  const exitSign = Math.sign(start.xMm - onWall.xMm) || linkOutwardSign(room, link.wallIndex);
   const delta = cursorX - start.xMm;
   const outward =
     Math.abs(delta) < MIN_SEGMENT_MM
@@ -840,11 +873,11 @@ function orthogonalTurn(
 function orthogonalApproachWall(
   last: HallwayWaypoint,
   room: PlacedRoom,
-  wall: WallSide,
+  wallIndex: number,
 ): HallwayWaypoint {
-  const edge = wallEdges(room).find((item) => item.wall === wall);
+  const edge = wallEdges(room).find((item) => item.wallIndex === wallIndex);
   if (!edge) return last;
-  if (wallApproachAxis(wall) === "z") {
+  if (linkApproachAxis(room, wallIndex) === "z") {
     return { xMm: last.xMm, zMm: edge.z1 };
   }
   return { xMm: edge.x1, zMm: last.zMm };
@@ -853,24 +886,33 @@ function orthogonalApproachWall(
 /** Opening center follows hallway centerline where it meets the wall. */
 export function linkAtWallApproach(
   room: PlacedRoom,
-  wall: WallSide,
+  wallIndex: number,
   last: HallwayWaypoint,
   widthMm: number,
   wallHit?: WallHitAttachInfo & { offsetMm?: number },
 ): { point: HallwayWaypoint; link: WallLink } {
-  const approach = orthogonalApproachWall(last, room, wall);
-  const projected = projectPointToWall(room, wall, approach.xMm, approach.zMm);
+  const approach = orthogonalApproachWall(last, room, wallIndex);
+  const projected = projectPointToWall(room, wallIndex, approach.xMm, approach.zMm);
   const offsetMm = clampWallOffset(
     room,
-    wall,
+    wallIndex,
     wallHit?.offsetMm ?? projected?.offsetMm ?? widthMm / 2,
     widthMm,
   );
-  const link = roomWallLink(room.placementId, wall, offsetMm);
+  const link = roomWallLink(room.placementId, wallIndex, offsetMm);
   return {
     point: centerlinePointFromWallHit(room, link, widthMm, wallHit, last),
     link,
   };
+}
+
+export interface SnapHallwayPointOptions {
+  snapPoints?: SnapPoint[];
+  stickyEntranceLine?: HallwayEntranceLineSnap | null;
+  excludeLinkKeys?: Set<string>;
+  excludeHallwayIds?: Set<string>;
+  /** Default ortho — 90° L-turns. 45° / free draw straight segments from the last point. */
+  angleSnapMode?: RoomAngleSnapMode;
 }
 
 export function snapHallwayPoint(
@@ -879,10 +921,85 @@ export function snapHallwayPoint(
   draft: HallwayDrawDraft,
   xMm: number,
   zMm: number,
-): { point: HallwayWaypoint; link: WallLink | null } {
+  options?: SnapHallwayPointOptions,
+): {
+  point: HallwayWaypoint;
+  link: WallLink | null;
+  stickyEntranceLine?: HallwayEntranceLineSnap | null;
+} {
   const last = draft.points[draft.points.length - 1];
   const prev = draft.points.length >= 2 ? draft.points[draft.points.length - 2] : null;
   const startLink = draft.links[0];
+
+  if (draft.points.length >= 1 && last) {
+    const entranceTargets = options?.snapPoints
+      ? collectHallwayEntranceTargets(
+          rooms,
+          hallways,
+          options.snapPoints,
+          options.excludeLinkKeys,
+        )
+      : [];
+    const continuationTargets = collectHallwayContinuationTargets(
+      hallways,
+      options?.excludeHallwayIds,
+    );
+    if (entranceTargets.length > 0 || continuationTargets.length > 0) {
+      const lineSnap = resolveHallwayDrawLineSnap({
+        rooms,
+        hallways,
+        entranceTargets,
+        continuationTargets,
+        pointerXMm: xMm,
+        pointerZMm: zMm,
+        approachFrom: last,
+        stickyLine: options?.stickyEntranceLine ?? null,
+      });
+      if (lineSnap) {
+        if (
+          shouldSnapPointToEntranceCenter(
+            lineSnap.stickyLine.anchor,
+            lineSnap.point,
+          )
+        ) {
+          if (lineSnap.stickyLine.kind === "continuation") {
+            return {
+              point: {
+                xMm: Math.round(lineSnap.stickyLine.anchor.xMm),
+                zMm: Math.round(lineSnap.stickyLine.anchor.zMm),
+              },
+              link: null,
+              stickyEntranceLine: null,
+            };
+          }
+          if (lineSnap.entranceTarget) {
+            const placement = targetToPlacement(lineSnap.entranceTarget);
+            const committed = commitWallPlacementPoint(
+              isRoomWallLink(placement.link)
+                ? (rooms.find(
+                    (room) =>
+                      isRoomWallLink(placement.link) &&
+                      room.placementId === placement.link.placementId,
+                  ) ?? null)
+                : null,
+              hallways,
+              placement,
+              last,
+            );
+            return {
+              ...committed,
+              stickyEntranceLine: null,
+            };
+          }
+        }
+        return {
+          point: lineSnap.point,
+          link: null,
+          stickyEntranceLine: lineSnap.stickyLine,
+        };
+      }
+    }
+  }
 
   const endpointHit = findEndpointWallHit(
     rooms,
@@ -896,10 +1013,30 @@ export function snapHallwayPoint(
     draft.points.length >= 1 &&
     draft.phase !== "placing-end"
   ) {
+    if (options?.snapPoints) {
+      const targets = collectHallwayEntranceTargets(
+        rooms,
+        hallways,
+        options.snapPoints,
+        options.excludeLinkKeys,
+      );
+      const snapped = snapEndpointToEntrance(
+        rooms,
+        hallways,
+        endpointHit,
+        targets,
+        draft.widthMm,
+        last,
+      );
+      if (snapped) {
+        return { ...snapped, stickyEntranceLine: null };
+      }
+    }
+
     if (endpointHit.kind === "room") {
       return linkAtWallApproach(
         endpointHit.hit.room,
-        endpointHit.hit.wall,
+        endpointHit.hit.wallIndex,
         last,
         draft.widthMm,
       );
@@ -923,9 +1060,19 @@ export function snapHallwayPoint(
   }
 
   if (draft.points.length === 1 && startLink) {
+    const angleSnapMode = options?.angleSnapMode ?? "ortho";
     if (isRoomWallLink(startLink)) {
       const room = roomForLink(rooms, startLink);
       if (room) {
+        if (angleSnapMode === "45" || angleSnapMode === "free") {
+          const aimed = snapToAngleMode(
+            last,
+            xMm,
+            zMm,
+            angleSnapMode === "45" ? "45" : "free",
+          );
+          return { point: { xMm: aimed.xMm, zMm: aimed.zMm }, link: null };
+        }
         return {
           point: orthogonalFromWallStart(
             last,
@@ -979,11 +1126,21 @@ export function snapHallwayPoint(
   }
 
   if (draft.points.length >= 2 && prev) {
+    const angleSnapMode = options?.angleSnapMode ?? "ortho";
     const collinear = collinearExtensionPoint(prev, last, xMm, zMm);
     if (collinear) {
       return { point: collinear, link: null };
     }
-    return { point: orthogonalTurn(prev, last, xMm, zMm), link: null };
+    if (angleSnapMode === "ortho" || angleSnapMode === "off") {
+      return { point: orthogonalTurn(prev, last, xMm, zMm), link: null };
+    }
+    const aimed = snapToAngleMode(
+      last,
+      xMm,
+      zMm,
+      angleSnapMode === "45" ? "45" : "free",
+    );
+    return { point: { xMm: aimed.xMm, zMm: aimed.zMm }, link: null };
   }
 
   return { point: { xMm: Math.round(xMm), zMm: Math.round(zMm) }, link: null };
@@ -1017,6 +1174,13 @@ function alignPreEndToFixedEnd(points: HallwayWaypoint[]): void {
   }
 }
 
+function pathHasNonAxisAlignedSegment(points: HallwayWaypoint[]): boolean {
+  for (let i = 1; i < points.length; i++) {
+    if (!hallwaySegmentAxis(points[i - 1], points[i])) return true;
+  }
+  return false;
+}
+
 /** Force a strict orthogonal centerline and drop redundant points. */
 export function normalizeHallwayPath(
   points: HallwayWaypoint[],
@@ -1029,6 +1193,10 @@ export function normalizeHallwayPath(
   let pts = points.map((point) => ({ ...point }));
   let lks = [...links];
   while (lks.length < pts.length) lks.push(null);
+
+  if (pathHasNonAxisAlignedSegment(pts)) {
+    return simplifyCollinearWaypoints(pts, lks);
+  }
 
   const alignChain = () => {
     const last = pts.length - 1;
@@ -1102,7 +1270,7 @@ export function syncLinkToCenterline(
 
   const projected = projectPointToWall(
     room,
-    link.wall,
+    link.wallIndex,
     centerline.xMm,
     centerline.zMm,
   );
@@ -1111,7 +1279,7 @@ export function syncLinkToCenterline(
     ...link,
     offsetMm: clampWallOffset(
       room,
-      link.wall,
+      link.wallIndex,
       projected.offsetMm,
       widthMm,
     ),
@@ -1156,7 +1324,7 @@ export function collectHallwayConnectionOpenings(
         points[pointIndex],
         widthMm,
       ) as RoomWallLink;
-      const key = `room:${link.placementId}:${link.wall}`;
+      const key = `room:${link.placementId}:${link.wallIndex}`;
       if (seen.has(key)) continue;
       seen.add(key);
 
@@ -1167,7 +1335,7 @@ export function collectHallwayConnectionOpenings(
       openings.push({
         kind: "room",
         placementId: link.placementId,
-        wall: link.wall,
+        wallIndex: link.wallIndex,
         startMm: span.startMm,
         endMm: span.endMm,
       });
@@ -1206,11 +1374,21 @@ export function collectHallwayConnectionOpenings(
   return openings;
 }
 
-function simplifyCollinearWaypoints(
+function isCollinearJunction(
+  prev: HallwayWaypoint,
+  curr: HallwayWaypoint,
+  next: HallwayWaypoint,
+): boolean {
+  const axisIn = hallwaySegmentAxis(prev, curr);
+  const axisOut = hallwaySegmentAxis(curr, next);
+  return axisIn !== null && axisIn === axisOut;
+}
+
+export function simplifyHallwayWaypoints(
   points: HallwayWaypoint[],
-  links: Array<WallLink | null>,
+  links: Array<WallLink | null> = [],
 ): { points: HallwayWaypoint[]; links: Array<WallLink | null> } {
-  if (points.length < 3) return { points, links };
+  if (points.length < 3) return { points: [...points], links: [...links] };
 
   let nextPoints = [...points];
   let nextLinks = [...links];
@@ -1220,28 +1398,25 @@ function simplifyCollinearWaypoints(
   while (changed && nextPoints.length >= 3) {
     changed = false;
     for (let i = 1; i < nextPoints.length - 1; i++) {
-      const prev = nextPoints[i - 1];
-      const curr = nextPoints[i];
-      const next = nextPoints[i + 1];
-      const sameX =
-        Math.abs(prev.xMm - curr.xMm) < 40 &&
-        Math.abs(curr.xMm - next.xMm) < 40;
-      const sameZ =
-        Math.abs(prev.zMm - curr.zMm) < 40 &&
-        Math.abs(curr.zMm - next.zMm) < 40;
-      if (sameX || sameZ) {
-        nextPoints = [
-          ...nextPoints.slice(0, i),
-          ...nextPoints.slice(i + 1),
-        ];
-        nextLinks = [...nextLinks.slice(0, i), ...nextLinks.slice(i + 1)];
-        changed = true;
-        break;
-      }
+      const prev = nextPoints[i - 1]!;
+      const curr = nextPoints[i]!;
+      const next = nextPoints[i + 1]!;
+      if (!isCollinearJunction(prev, curr, next)) continue;
+      nextPoints = [...nextPoints.slice(0, i), ...nextPoints.slice(i + 1)];
+      nextLinks = [...nextLinks.slice(0, i), ...nextLinks.slice(i + 1)];
+      changed = true;
+      break;
     }
   }
 
   return { points: nextPoints, links: nextLinks };
+}
+
+function simplifyCollinearWaypoints(
+  points: HallwayWaypoint[],
+  links: Array<WallLink | null>,
+): { points: HallwayWaypoint[]; links: Array<WallLink | null> } {
+  return simplifyHallwayWaypoints(points, links);
 }
 
 export function finalizeHallwayPath(
@@ -1363,6 +1538,462 @@ export function finalizeHallwayPath(
   return { points: nextPoints, links: finalLinks };
 }
 
+function endpointCenterlineAligned(
+  rooms: PlacedRoom[],
+  hallways: Hallway[],
+  link: WallLink,
+  widthMm: number,
+  adjacent: HallwayWaypoint,
+): HallwayWaypoint {
+  if (isRoomWallLink(link)) {
+    const room = roomForLink(rooms, link);
+    if (!room) return adjacent;
+    return axisAlignedWallCenterline(room, link, widthMm, adjacent);
+  }
+  const hallway = hallwayForLink(hallways, link);
+  if (!hallway) return adjacent;
+  return (
+    axisAlignedHallwayCenterline(hallway, link, widthMm, adjacent) ?? adjacent
+  );
+}
+
+function endpointCenterlineFromLink(
+  rooms: PlacedRoom[],
+  hallways: Hallway[],
+  link: WallLink,
+  widthMm: number,
+  approachFrom?: HallwayWaypoint,
+): HallwayWaypoint {
+  if (isRoomWallLink(link)) {
+    const room = roomForLink(rooms, link);
+    if (!room) return { xMm: 0, zMm: 0 };
+    return centerlinePointFromWallHit(room, link, widthMm, undefined, approachFrom);
+  }
+  const hallway = hallwayForLink(hallways, link);
+  if (!hallway) return { xMm: 0, zMm: 0 };
+  return (
+    centerlinePointFromHallwayLink(
+      hallway,
+      link,
+      widthMm,
+      undefined,
+      approachFrom,
+    ) ?? { xMm: 0, zMm: 0 }
+  );
+}
+
+/** Orthogonal centerline path between two fixed wall links (entrance → exit). */
+export function routeHallwayBetweenLinks(
+  rooms: PlacedRoom[],
+  hallways: Hallway[],
+  startLink: WallLink,
+  endLink: WallLink,
+  widthMm: number,
+): { points: HallwayWaypoint[]; links: Array<WallLink | null> } {
+  const startRough = endpointCenterlineFromLink(
+    rooms,
+    hallways,
+    startLink,
+    widthMm,
+  );
+  const endRough = endpointCenterlineFromLink(
+    rooms,
+    hallways,
+    endLink,
+    widthMm,
+    startRough,
+  );
+
+  const bend: HallwayWaypoint =
+    Math.abs(endRough.xMm - startRough.xMm) >=
+    Math.abs(endRough.zMm - startRough.zMm)
+      ? { xMm: endRough.xMm, zMm: startRough.zMm }
+      : { xMm: startRough.xMm, zMm: endRough.zMm };
+
+  let startPt = endpointCenterlineAligned(
+    rooms,
+    hallways,
+    startLink,
+    widthMm,
+    bend,
+  );
+  let endPt = endpointCenterlineAligned(
+    rooms,
+    hallways,
+    endLink,
+    widthMm,
+    startPt,
+  );
+
+  const bend2: HallwayWaypoint =
+    Math.abs(endPt.xMm - startPt.xMm) >= Math.abs(endPt.zMm - startPt.zMm)
+      ? { xMm: endPt.xMm, zMm: startPt.zMm }
+      : { xMm: startPt.xMm, zMm: endPt.zMm };
+
+  startPt = endpointCenterlineAligned(
+    rooms,
+    hallways,
+    startLink,
+    widthMm,
+    bend2,
+  );
+  endPt = endpointCenterlineAligned(
+    rooms,
+    hallways,
+    endLink,
+    widthMm,
+    bend2,
+  );
+
+  const leg1 = Math.hypot(bend2.xMm - startPt.xMm, bend2.zMm - startPt.zMm);
+  const leg2 = Math.hypot(endPt.xMm - bend2.xMm, endPt.zMm - bend2.zMm);
+  const direct = Math.hypot(endPt.xMm - startPt.xMm, endPt.zMm - startPt.zMm);
+
+  let points: HallwayWaypoint[];
+  let links: Array<WallLink | null>;
+
+  if (
+    leg1 >= MIN_HALLWAY_POINT_DISTANCE_MM &&
+    leg2 >= MIN_HALLWAY_POINT_DISTANCE_MM
+  ) {
+    points = [startPt, bend2, endPt];
+    links = [startLink, null, endLink];
+  } else if (direct >= MIN_HALLWAY_POINT_DISTANCE_MM) {
+    points = [startPt, endPt];
+    links = [startLink, endLink];
+  } else {
+    points = [startPt, endPt];
+    links = [startLink, endLink];
+  }
+
+  return finalizeHallwayPath(rooms, hallways, points, links, widthMm);
+}
+
+export interface ExitAlignmentSnap {
+  /** Bend or stop point offered to the user. */
+  point: HallwayWaypoint;
+  label: string;
+  pathPoints: HallwayWaypoint[];
+  pathLinks: Array<WallLink | null>;
+  /** Dashed guide: entrance → bend(s) → exit centerline. */
+  guidePath: HallwayWaypoint[];
+}
+
+export const EXIT_ALIGN_SNAP_RADIUS_MM = 520;
+
+function segmentAlongAxis(
+  from: HallwayWaypoint,
+  to: HallwayWaypoint,
+  axis: "x" | "z",
+  minLen = MIN_SEGMENT_MM,
+): boolean {
+  const perp = axis === "x" ? "z" : "x";
+  const along =
+    axis === "x"
+      ? Math.abs(to.xMm - from.xMm)
+      : Math.abs(to.zMm - from.zMm);
+  const perpDelta =
+    perp === "x"
+      ? Math.abs(to.xMm - from.xMm)
+      : Math.abs(to.zMm - from.zMm);
+  return along >= minLen && perpDelta < 40;
+}
+
+function outwardAxisForWallLink(
+  link: WallLink,
+  room: PlacedRoom | undefined,
+): "x" | "z" | null {
+  if (!isRoomWallLink(link) || !room) return null;
+  return linkApproachAxis(room, link.wallIndex) === "x" ? "z" : "x";
+}
+
+function approachAxisForWallLink(
+  link: WallLink,
+  room: PlacedRoom | undefined,
+): "x" | "z" | null {
+  if (!isRoomWallLink(link) || !room) return null;
+  return linkApproachAxis(room, link.wallIndex) === "x" ? "z" : "x";
+}
+
+function buildExitRouteCandidate(
+  rooms: PlacedRoom[],
+  hallways: Hallway[],
+  startLink: WallLink,
+  endLink: WallLink,
+  widthMm: number,
+  bend: HallwayWaypoint | null,
+): {
+  startPt: HallwayWaypoint;
+  endPt: HallwayWaypoint;
+  points: HallwayWaypoint[];
+  links: Array<WallLink | null>;
+} | null {
+  const bendRef = bend ?? endpointCenterlineFromLink(
+    rooms,
+    hallways,
+    endLink,
+    widthMm,
+    endpointCenterlineFromLink(rooms, hallways, startLink, widthMm),
+  );
+
+  let startPt = endpointCenterlineAligned(
+    rooms,
+    hallways,
+    startLink,
+    widthMm,
+    bendRef,
+  );
+  let endPt = endpointCenterlineAligned(
+    rooms,
+    hallways,
+    endLink,
+    widthMm,
+    bend ? bend : startPt,
+  );
+
+  if (!bend) {
+    const direct = Math.hypot(endPt.xMm - startPt.xMm, endPt.zMm - startPt.zMm);
+    if (direct < MIN_SEGMENT_MM) return null;
+    const startRoom = roomForLink(rooms, startLink);
+    const endRoom = roomForLink(rooms, endLink);
+    const outward = outwardAxisForWallLink(startLink, startRoom);
+    const approach = approachAxisForWallLink(endLink, endRoom);
+    if (
+      outward &&
+      approach &&
+      !segmentAlongAxis(startPt, endPt, outward) &&
+      !segmentAlongAxis(startPt, endPt, approach)
+    ) {
+      return null;
+    }
+    const finalized = finalizeHallwayPath(
+      rooms,
+      hallways,
+      [startPt, endPt],
+      [startLink, endLink],
+      widthMm,
+    );
+    return {
+      startPt: finalized.points[0]!,
+      endPt: finalized.points[finalized.points.length - 1]!,
+      points: finalized.points,
+      links: finalized.links,
+    };
+  }
+
+  startPt = endpointCenterlineAligned(rooms, hallways, startLink, widthMm, bend);
+  endPt = endpointCenterlineAligned(rooms, hallways, endLink, widthMm, bend);
+
+  const startRoom = roomForLink(rooms, startLink);
+  const endRoom = roomForLink(rooms, endLink);
+  const outward = outwardAxisForWallLink(startLink, startRoom);
+  const approach = approachAxisForWallLink(endLink, endRoom);
+  if (
+    !outward ||
+    !approach ||
+    !segmentAlongAxis(startPt, bend, outward) ||
+    !segmentAlongAxis(bend, endPt, approach)
+  ) {
+    return null;
+  }
+
+  const leg1 = Math.hypot(bend.xMm - startPt.xMm, bend.zMm - startPt.zMm);
+  const leg2 = Math.hypot(endPt.xMm - bend.xMm, endPt.zMm - bend.zMm);
+  if (leg1 < MIN_SEGMENT_MM || leg2 < MIN_SEGMENT_MM) return null;
+
+  const finalized = finalizeHallwayPath(
+    rooms,
+    hallways,
+    [startPt, bend, endPt],
+    [startLink, null, endLink],
+    widthMm,
+  );
+  return {
+    startPt: finalized.points[0]!,
+    endPt: finalized.points[finalized.points.length - 1]!,
+    points: finalized.points,
+    links: finalized.links,
+  };
+}
+
+/** Snap guides between fixed entrance/exit portals — no hallway mesh until user picks one. */
+export function computeExitAlignmentSnaps(
+  rooms: PlacedRoom[],
+  hallways: Hallway[],
+  draft: HallwayDrawDraft,
+): ExitAlignmentSnap[] {
+  const hasExitPortal =
+    draft.endPlacement &&
+    (draft.phase === "align-exit" || draft.phase === "dragging");
+  if (
+    !hasExitPortal ||
+    !draft.startPlacement ||
+    !draft.endPlacement ||
+    !draft.links[0]
+  ) {
+    return [];
+  }
+
+  const startLink = draft.links[0];
+  const endLink = draft.endPlacement.link;
+  const widthMm = draft.widthMm;
+
+  const startRough = endpointCenterlineFromLink(
+    rooms,
+    hallways,
+    startLink,
+    widthMm,
+  );
+  const endRough = endpointCenterlineFromLink(
+    rooms,
+    hallways,
+    endLink,
+    widthMm,
+    startRough,
+  );
+
+  const bends: HallwayWaypoint[] = [
+    { xMm: endRough.xMm, zMm: startRough.zMm },
+    { xMm: startRough.xMm, zMm: endRough.zMm },
+  ];
+
+  const cardinalFromExit: HallwayWaypoint[] = [
+    { xMm: endRough.xMm + MIN_SEGMENT_MM, zMm: endRough.zMm },
+    { xMm: endRough.xMm - MIN_SEGMENT_MM, zMm: endRough.zMm },
+    { xMm: endRough.xMm, zMm: endRough.zMm + MIN_SEGMENT_MM },
+    { xMm: endRough.xMm, zMm: endRough.zMm - MIN_SEGMENT_MM },
+  ];
+
+  const snaps: ExitAlignmentSnap[] = [];
+  const seen = new Set<string>();
+
+  const pushSnap = (snap: ExitAlignmentSnap) => {
+    const key = `${snap.point.xMm},${snap.point.zMm}|${snap.guidePath.map((p) => `${p.xMm},${p.zMm}`).join("|")}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    snaps.push(snap);
+  };
+
+  for (const bend of bends) {
+    const route = buildExitRouteCandidate(
+      rooms,
+      hallways,
+      startLink,
+      endLink,
+      widthMm,
+      bend,
+    );
+    if (route) {
+      pushSnap({
+        point: bend,
+        label: "Turn here · straight into exit",
+        pathPoints: route.points,
+        pathLinks: route.links,
+        guidePath: route.points,
+      });
+      continue;
+    }
+    pushSnap({
+      point: bend,
+      label: "Turn here · align to exit",
+      pathPoints: [startRough, bend, endRough],
+      pathLinks: [startLink, null, endLink],
+      guidePath: [startRough, bend, endRough],
+    });
+  }
+
+  const straight = buildExitRouteCandidate(
+    rooms,
+    hallways,
+    startLink,
+    endLink,
+    widthMm,
+    null,
+  );
+  if (straight) {
+    pushSnap({
+      point: {
+        xMm: Math.round((straight.startPt.xMm + straight.endPt.xMm) / 2),
+        zMm: Math.round((straight.startPt.zMm + straight.endPt.zMm) / 2),
+      },
+      label: "Straight to exit",
+      pathPoints: straight.points,
+      pathLinks: straight.links,
+      guidePath: straight.points,
+    });
+  } else {
+    pushSnap({
+      point: {
+        xMm: Math.round((startRough.xMm + endRough.xMm) / 2),
+        zMm: Math.round((startRough.zMm + endRough.zMm) / 2),
+      },
+      label: "Straight to exit",
+      pathPoints: [startRough, endRough],
+      pathLinks: [startLink, endLink],
+      guidePath: [startRough, endRough],
+    });
+  }
+
+  for (const point of cardinalFromExit) {
+    const route = buildExitRouteCandidate(
+      rooms,
+      hallways,
+      startLink,
+      endLink,
+      widthMm,
+      point,
+    );
+    if (route) {
+      pushSnap({
+        point,
+        label: "Align with exit",
+        pathPoints: route.points,
+        pathLinks: route.links,
+        guidePath: route.points,
+      });
+    }
+  }
+
+  return snaps;
+}
+
+export function nearestExitAlignmentSnap(
+  rooms: PlacedRoom[],
+  hallways: Hallway[],
+  draft: HallwayDrawDraft,
+  xMm: number,
+  zMm: number,
+  radiusMm = EXIT_ALIGN_SNAP_RADIUS_MM,
+): ExitAlignmentSnap | null {
+  const snaps = computeExitAlignmentSnaps(rooms, hallways, draft);
+  let best: { snap: ExitAlignmentSnap; distanceMm: number } | null = null;
+  for (const snap of snaps) {
+    const distanceMm = Math.hypot(snap.point.xMm - xMm, snap.point.zMm - zMm);
+    if (distanceMm > radiusMm) continue;
+    if (!best || distanceMm < best.distanceMm) {
+      best = { snap, distanceMm };
+    }
+  }
+  return best?.snap ?? null;
+}
+
+export function draftFromExitAlignmentSnap(
+  draft: HallwayDrawDraft,
+  snap: ExitAlignmentSnap,
+): HallwayDrawDraft {
+  return {
+    ...draft,
+    phase: "ready",
+    widthMm: draft.widthMm,
+    points: snap.pathPoints,
+    links: snap.pathLinks,
+    preview: null,
+    wallPlacement: null,
+    startPlacement: null,
+    endPlacement: null,
+  };
+}
+
 /** Snap radius for hallway path endpoints approaching a wall. */
 export function hallwayWallSnapRadiusMm(widthMm: number): number {
   return Math.max(420, widthMm / 2 + 220);
@@ -1425,12 +2056,14 @@ function inferredEndLink(
   return inferEndpointWallLink(rooms, hallways, last, prev, draft.widthMm);
 }
 
-/** Centerline path for live preview — matches finalized hallway geometry. */
+/** Centerline path shown in the viewport — empty during portal-only alignment. */
 export function draftDisplayPath(
   rooms: PlacedRoom[],
   hallways: Hallway[],
   draft: HallwayDrawDraft,
+  options?: { angleSnapMode?: RoomAngleSnapMode },
 ): HallwayWaypoint[] {
+  if (draft.phase === "align-exit") return [];
   if (draft.points.length === 0) return [];
 
   let points = [...draft.points];
@@ -1483,13 +2116,18 @@ export function draftDisplayPath(
 
   if (draft.preview && !extending && points.length > 0) {
     const last = points[points.length - 1];
-    const dx = Math.abs(draft.preview.xMm - last.xMm);
-    const dz = Math.abs(draft.preview.zMm - last.zMm);
-    const aligned =
-      dx >= dz
-        ? { xMm: draft.preview.xMm, zMm: last.zMm }
-        : { xMm: last.xMm, zMm: draft.preview.zMm };
-    points = [...points, aligned];
+    const angleSnapMode = options?.angleSnapMode ?? "ortho";
+    if (angleSnapMode === "ortho" || angleSnapMode === "off") {
+      const dx = Math.abs(draft.preview.xMm - last.xMm);
+      const dz = Math.abs(draft.preview.zMm - last.zMm);
+      const aligned =
+        dx >= dz
+          ? { xMm: draft.preview.xMm, zMm: last.zMm }
+          : { xMm: last.xMm, zMm: draft.preview.zMm };
+      points = [...points, aligned];
+    } else {
+      points = [...points, draft.preview];
+    }
   }
 
   return points;
@@ -1521,6 +2159,27 @@ export function draftOpeningLinks(
   draft.links.forEach((link) => {
     if (link) add(link, draft.widthMm);
   });
+
+  if (
+    draft.startPlacement &&
+    (draft.phase === "pick-end" ||
+      draft.phase === "align-exit" ||
+      draft.phase === "dragging")
+  ) {
+    add(
+      draft.startPlacement.link,
+      draft.startPlacement.widthMm,
+      draft.startPlacement,
+    );
+  }
+
+  if (draft.endPlacement && (draft.phase === "align-exit" || draft.phase === "dragging")) {
+    add(
+      draft.endPlacement.link,
+      draft.endPlacement.widthMm,
+      draft.endPlacement,
+    );
+  }
 
   if (
     draft.wallPlacement &&
@@ -1582,6 +2241,107 @@ export function prepareHallwayForCreate(
   return finalizeHallwayPath(rooms, hallways, points, links, draft.widthMm);
 }
 
+const ENDPOINT_ATTACH_TOLERANCE_MM = 140;
+
+function hallwayEndpointForPoint(
+  hallway: Hallway,
+  point: HallwayWaypoint,
+): "start" | "end" | null {
+  const pts = hallway.waypointsMm;
+  if (pts.length < 2) return null;
+  const start = pts[0]!;
+  const end = pts[pts.length - 1]!;
+  if (Math.hypot(point.xMm - start.xMm, point.zMm - start.zMm) <= ENDPOINT_ATTACH_TOLERANCE_MM) {
+    return "start";
+  }
+  if (Math.hypot(point.xMm - end.xMm, point.zMm - end.zMm) <= ENDPOINT_ATTACH_TOLERANCE_MM) {
+    return "end";
+  }
+  return null;
+}
+
+function segmentsCollinear(
+  a0: HallwayWaypoint,
+  a1: HallwayWaypoint,
+  b0: HallwayWaypoint,
+  b1: HallwayWaypoint,
+): boolean {
+  const axisA = hallwaySegmentAxis(a0, a1);
+  const axisB = hallwaySegmentAxis(b0, b1);
+  return axisA !== null && axisA === axisB;
+}
+
+export interface HallwayExtensionPlan {
+  hallwayId: string;
+  waypoints: HallwayWaypoint[];
+  openings: HallwayConnectionOpening[];
+}
+
+/** When a new hallway continues straight from an existing endpoint, merge paths instead of creating a seam. */
+export function tryPlanHallwayExtension(
+  hallways: Hallway[],
+  newPoints: HallwayWaypoint[],
+  openings: HallwayConnectionOpening[],
+): HallwayExtensionPlan | null {
+  if (newPoints.length < 2) return null;
+
+  const branchOpenings = openings.filter(
+    (opening): opening is HallwayBranchConnectionOpening => opening.kind === "hallway",
+  );
+  if (branchOpenings.length !== 1) return null;
+
+  const branch = branchOpenings[0];
+  const parent = hallways.find((hallway) => hallway.id === branch.hallwayId);
+  if (!parent || parent.waypointsMm.length < 2) return null;
+
+  const parentPts = parent.waypointsMm;
+  const lastNew = newPoints.length - 1;
+  let merged: HallwayWaypoint[] | null = null;
+
+  const parentAtStart = hallwayEndpointForPoint(parent, newPoints[0]!);
+  if (parentAtStart === "end") {
+    const parentSegStart = parentPts[parentPts.length - 2]!;
+    const parentSegEnd = parentPts[parentPts.length - 1]!;
+    if (
+      segmentsCollinear(
+        parentSegStart,
+        parentSegEnd,
+        newPoints[0]!,
+        newPoints[1]!,
+      )
+    ) {
+      merged = [...parentPts, ...newPoints.slice(1)];
+    }
+  }
+
+  const parentAtEnd = hallwayEndpointForPoint(parent, newPoints[lastNew]!);
+  if (!merged && parentAtEnd === "start") {
+    const parentSegStart = parentPts[0]!;
+    const parentSegEnd = parentPts[1]!;
+    if (
+      segmentsCollinear(
+        newPoints[lastNew - 1]!,
+        newPoints[lastNew]!,
+        parentSegStart,
+        parentSegEnd,
+      )
+    ) {
+      merged = [...newPoints.slice(0, -1), ...parentPts];
+    }
+  }
+
+  if (!merged) return null;
+
+  const { points } = simplifyHallwayWaypoints(merged);
+  if (points.length < 2) return null;
+
+  return {
+    hallwayId: parent.id,
+    waypoints: points,
+    openings: openings.filter((opening) => opening !== branch),
+  };
+}
+
 /** Detect room/hallway wall connections at hallway endpoints for wall openings. */
 export function resolveHallwayEndpointLinks(
   rooms: PlacedRoom[],
@@ -1625,33 +2385,33 @@ function inferEndpointWallLink(
     for (const edge of wallEdges(room)) {
       const projected = projectPointToWall(
         room,
-        edge.wall,
+        edge.wallIndex,
         endpoint.xMm,
         endpoint.zMm,
       );
       if (!projected || projected.distanceMm > Math.max(320, widthMm / 2 + 160)) continue;
 
-      const axis = wallApproachAxis(edge.wall);
+      const axis = linkApproachAxis(room, edge.wallIndex);
       if (axis === "z" && Math.abs(approach.xMm - endpoint.xMm) > 120) continue;
       if (axis === "x" && Math.abs(approach.zMm - endpoint.zMm) > 120) continue;
 
-      const approachPoint = orthogonalApproachWall(approach, room, edge.wall);
+      const approachPoint = orthogonalApproachWall(approach, room, edge.wallIndex);
       const onWall = projectPointToWall(
         room,
-        edge.wall,
+        edge.wallIndex,
         approachPoint.xMm,
         approachPoint.zMm,
       );
       const offsetMm = clampWallOffset(
         room,
-        edge.wall,
+        edge.wallIndex,
         onWall?.offsetMm ?? projected.offsetMm,
         widthMm,
       );
 
       if (!best || projected.distanceMm < best.distanceMm) {
         best = {
-          link: roomWallLink(room.placementId, edge.wall, offsetMm),
+          link: roomWallLink(room.placementId, edge.wallIndex, offsetMm),
           distanceMm: projected.distanceMm,
         };
       }

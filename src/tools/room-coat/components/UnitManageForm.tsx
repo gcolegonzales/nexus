@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useRoomCoat } from "@/tools/room-coat/RoomCoatProvider";
-import { useSavedHint } from "@/shared/hooks/useSavedHint";
 import type { HomeUnit } from "@/tools/room-coat/types/state";
 import { Button } from "@nexus/next";
 import { FormActions } from "@nexus/next";
-import { Input } from "@nexus/ui";
-import { Badge } from "@nexus/ui";
+import { Input, useToast } from "@nexus/ui";
 
 interface UnitManageFormProps {
   unit: HomeUnit;
@@ -16,8 +14,8 @@ interface UnitManageFormProps {
 
 export function UnitManageForm({ unit, onClose }: UnitManageFormProps) {
   const { state, updateUnit, deleteUnit } = useRoomCoat();
+  const toast = useToast();
   const [draftName, setDraftName] = useState(unit.name);
-  const { saved, showSaved } = useSavedHint();
 
   useEffect(() => {
     setDraftName(unit.name);
@@ -25,7 +23,7 @@ export function UnitManageForm({ unit, onClose }: UnitManageFormProps) {
 
   async function handleSave() {
     await updateUnit(unit.id, { name: draftName.trim() || "Unit" });
-    showSaved();
+    toast.success("Unit saved");
   }
 
   async function handleDelete() {
@@ -37,6 +35,7 @@ export function UnitManageForm({ unit, onClose }: UnitManageFormProps) {
     if (!confirmed) return;
 
     await deleteUnit(unit.id);
+    toast.success("Unit deleted");
     onClose();
   }
 
@@ -48,8 +47,6 @@ export function UnitManageForm({ unit, onClose }: UnitManageFormProps) {
         void handleSave();
       }}
     >
-      {saved && <Badge variant="mint">Saved</Badge>}
-
       <Input
         label="Unit name"
         value={draftName}

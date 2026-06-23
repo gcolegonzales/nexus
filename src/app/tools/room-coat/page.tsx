@@ -3,7 +3,6 @@
 import { useRoomCoat } from "@/tools/room-coat/RoomCoatProvider";
 import { UnitEditor } from "@/tools/room-coat/components/editor/UnitEditor";
 import { CoatPlanPanel } from "@/tools/room-coat/components/CoatPlanPanel";
-import { SurfaceInspector } from "@/tools/room-coat/components/SurfaceInspector";
 import { ToolSection } from "@/tools/room-coat/components/ToolSection";
 
 export default function RoomCoatOverviewPage() {
@@ -16,7 +15,6 @@ export default function RoomCoatOverviewPage() {
     >
       <div className="space-y-6">
         <UnitEditor />
-        <SurfaceInspector />
         <CoatPlanPanel />
       </div>
     </ToolSection>

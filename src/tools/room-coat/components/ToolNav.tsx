@@ -19,9 +19,11 @@ const links: ToolNavLink[] = [
     isActive: (pathname) => pathname.startsWith("/tools/room-coat/paints"),
   },
   {
-    href: "/tools/room-coat/schedule",
-    label: "Schedule",
-    isActive: (pathname) => pathname.startsWith("/tools/room-coat/schedule"),
+    href: "/tools/room-coat/surfaces",
+    label: "Surfaces",
+    isActive: (pathname) =>
+      pathname.startsWith("/tools/room-coat/surfaces") ||
+      pathname.startsWith("/tools/room-coat/schedule"),
   },
 ];
 

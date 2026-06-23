@@ -17,19 +17,13 @@ import {
 import type { Asset } from "@/tools/home-maintenance/types/asset";
 import type { TaskCompletionRecord } from "@/tools/home-maintenance/types/completion";
 import type { Task } from "@/tools/home-maintenance/types/task";
-import { EditIcon } from "@nexus/ui";
-import { IconActionButton } from "@nexus/ui";
-import { FormActions } from "@nexus/next";
-import { AccordionCaret } from "@nexus/ui";
-import { Collapsible } from "@nexus/ui";
-import { Badge } from "@nexus/ui";
-import { Card } from "@nexus/ui";
 import {
-  accordionCardClassName,
-  accordionCardTransitionClassName,
-  accordionHeaderClassName,
-  accordionPanelClassName,
-} from "@/tools/home-maintenance/components/accordion-styles";
+  AccordionCard,
+  Badge,
+  EditIcon,
+  IconActionButton,
+} from "@nexus/ui";
+import { FormActions } from "@nexus/next";
 
 interface TaskAccordionRowProps {
   task: Task;
@@ -108,27 +102,16 @@ export function TaskAccordionRow({
   }
 
   return (
-    <Card
-      padding={false}
-      className={`${accordionCardTransitionClassName} ${accordionCardClassName(open)}`}
-    >
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={handleHeaderClick}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            handleHeaderClick();
-          }
-        }}
-        className={accordionHeaderClassName(open)}
-      >
+    <AccordionCard
+      open={open}
+      onHeaderClick={handleHeaderClick}
+      panelId={panelId}
+      header={
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold text-text">{summaryTask.title}</h3>
+            <h3 className="font-semibold leading-snug text-text">
+              {summaryTask.title}
+            </h3>
             {asset && (
               <>
                 <Badge variant="sky">{getAssetCardTitle(asset)}</Badge>
@@ -154,61 +137,55 @@ export function TaskAccordionRow({
           </p>
           <NeedsInfoBadge flags={flags} />
         </div>
+      }
+      headerActions={
+        !editing ? (
+          <IconActionButton
+            label={`Edit ${summaryTask.title}`}
+            onClick={handleEditClick}
+          >
+            <EditIcon />
+          </IconActionButton>
+        ) : null
+      }
+    >
+      {completedAt && !editing && (
+        <Badge variant="mint" className="mb-4">
+          Last Completed {new Date(completedAt).toLocaleDateString()}
+          {completionCondition &&
+            isHvacFilterInspectionTask(task.templateKey) &&
+            ` · ${HVAC_FILTER_CONDITION_LABELS[completionCondition]}`}
+        </Badge>
+      )}
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          {!editing && (
-            <IconActionButton
-              label={`Edit ${summaryTask.title}`}
-              onClick={handleEditClick}
-            >
-              <EditIcon />
-            </IconActionButton>
-          )}
-          <AccordionCaret open={open} />
-        </div>
-      </div>
+      <TaskForm
+        task={draft}
+        assets={assets}
+        hvacFilterSize={hvacFilterSize}
+        readOnly={!editing}
+        showNeedsInfoBadge={false}
+        onChange={setDraft}
+      />
 
-      <Collapsible open={open} id={panelId} innerClassName={accordionPanelClassName}>
-        <div onClick={(event) => event.stopPropagation()}>
-          {completedAt && !editing && (
-            <Badge variant="mint" className="mb-4">
-              Last Completed {new Date(completedAt).toLocaleDateString()}
-              {completionCondition &&
-                isHvacFilterInspectionTask(task.templateKey) &&
-                ` · ${HVAC_FILTER_CONDITION_LABELS[completionCondition]}`}
-            </Badge>
-          )}
-
-          <TaskForm
-            task={draft}
-            assets={assets}
-            hvacFilterSize={hvacFilterSize}
-            readOnly={!editing}
-            showNeedsInfoBadge={false}
-            onChange={setDraft}
-          />
-
-          {!editing && (
-            <FormActions
-              left={
-                <TaskCompleteActions
-                  task={task}
-                  replacementRecommended={replacementRecommended}
-                  onMarkComplete={(options) => markTaskComplete(task.id, options)}
-                />
-              }
+      {!editing && (
+        <FormActions
+          left={
+            <TaskCompleteActions
+              task={task}
+              replacementRecommended={replacementRecommended}
+              onMarkComplete={(options) => markTaskComplete(task.id, options)}
             />
-          )}
+          }
+        />
+      )}
 
-          {editing && (
-            <FormActions
-              onCancel={handleCancel}
-              onSave={(event) => void handleSave(event)}
-            />
-          )}
-        </div>
-      </Collapsible>
-    </Card>
+      {editing && (
+        <FormActions
+          onCancel={handleCancel}
+          onSave={(event) => void handleSave(event)}
+        />
+      )}
+    </AccordionCard>
   );
 }
 

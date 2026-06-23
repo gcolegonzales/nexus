@@ -1,5 +1,5 @@
 import type { Hallway } from "@/tools/room-coat/types/state";
-import { floorLabelPlaneSizeM } from "@/tools/room-coat/lib/wall-label-texture";
+import { floorNameLabelPlaneSizeM } from "@/tools/room-coat/lib/wall-label-texture";
 
 export interface HallwayLabelAnchor {
   xMm: number;
@@ -65,70 +65,6 @@ export function hallwayLabelAnchor(hallway: Hallway): HallwayLabelAnchor | null 
   };
 }
 
-const CARDINAL_YAWS = [0, Math.PI / 2, Math.PI, -Math.PI / 2] as const;
-
-/** Text "up" on the floor plane in world XZ after mesh tilt and yaw. */
-function floorLabelTextUpXZ(yaw: number): { x: number; z: number } {
-  return { x: -Math.sin(yaw), z: -Math.cos(yaw) };
-}
-
-function pickBestFloorLabelYaw(
-  candidates: readonly number[],
-  toCameraX: number,
-  toCameraZ: number,
-): number {
-  let bestYaw = candidates[0] ?? 0;
-  let bestScore = -Infinity;
-
-  for (const yaw of candidates) {
-    const up = floorLabelTextUpXZ(yaw);
-    const score = up.x * toCameraX + up.z * toCameraZ;
-    if (score > bestScore) {
-      bestScore = score;
-      bestYaw = yaw;
-    }
-  }
-
-  return bestYaw;
-}
-
-/** Snap floor label yaw to the nearest cardinal that reads upright from the camera. */
-export function snapRoomFloorLabelYaw(
-  labelXM: number,
-  labelZM: number,
-  cameraX: number,
-  cameraZ: number,
-): number {
-  const dx = cameraX - labelXM;
-  const dz = cameraZ - labelZM;
-  const len = Math.hypot(dx, dz);
-  if (len < 1e-6) return 0;
-
-  const toCameraX = dx / len;
-  const toCameraZ = dz / len;
-  return pickBestFloorLabelYaw(CARDINAL_YAWS, toCameraX, toCameraZ);
-}
-
-/** Hallway labels stay aligned to the path axis and only flip 180° when needed. */
-export function hallwayFloorLabelYaw(
-  axis: "x" | "z",
-  labelXM: number,
-  labelZM: number,
-  cameraX: number,
-  cameraZ: number,
-): number {
-  const dx = cameraX - labelXM;
-  const dz = cameraZ - labelZM;
-  const len = Math.hypot(dx, dz) || 1;
-  const toCameraX = dx / len;
-  const toCameraZ = dz / len;
-
-  const candidates =
-    axis === "z" ? ([Math.PI / 2, -Math.PI / 2] as const) : ([0, Math.PI] as const);
-
-  return pickBestFloorLabelYaw(candidates, toCameraX, toCameraZ);
-}
-
 export function hallwayLabelFloorSizeM(
   hallwayWidthMm: number,
   pathLengthMm: number,
@@ -136,7 +72,7 @@ export function hallwayLabelFloorSizeM(
 ): [number, number] {
   const floorWidthM = hallwayWidthMm * 0.001;
   const floorLengthM = Math.max(pathLengthMm * 0.001, floorWidthM);
-  return floorLabelPlaneSizeM(floorWidthM, floorLengthM, aspect);
+  return floorNameLabelPlaneSizeM(floorWidthM, floorLengthM, aspect);
 }
 
 export function hallwayPathLengthMm(hallway: Hallway): number {

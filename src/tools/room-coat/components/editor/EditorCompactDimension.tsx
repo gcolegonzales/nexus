@@ -7,13 +7,17 @@ import {
   mmToImperial,
   mmToMetric,
 } from "@/tools/room-coat/lib/units";
-import { EDITOR_INPUT } from "@/tools/room-coat/components/editor/editor-chrome";
+import {
+  EDITOR_DIMENSION_INPUT,
+} from "@/tools/room-coat/components/editor/editor-chrome";
 
 interface EditorCompactDimensionProps {
   label: string;
   valueMm: number;
   unit: UnitPreference;
   onChangeMm: (mm: number) => void;
+  /** panel = bottom readout (larger). inline = toolbar row. */
+  variant?: "inline" | "panel";
 }
 
 export function EditorCompactDimension({
@@ -21,68 +25,91 @@ export function EditorCompactDimension({
   valueMm,
   unit,
   onChangeMm,
+  variant = "inline",
 }: EditorCompactDimensionProps) {
+  const isPanel = variant === "panel";
+  const inputClass = isPanel
+    ? `${EDITOR_DIMENSION_INPUT} min-w-[3rem] w-14 text-sm`
+    : `${EDITOR_DIMENSION_INPUT} min-w-[2.25rem] w-10 text-xs`;
+  const inchInputClass = isPanel
+    ? `${EDITOR_DIMENSION_INPUT} min-w-[3.25rem] w-16 text-sm`
+    : `${EDITOR_DIMENSION_INPUT} min-w-[2.5rem] w-12 text-xs`;
+  const labelClass = isPanel
+    ? "w-4 shrink-0 text-sm font-medium text-zinc-300"
+    : "shrink-0 text-sm text-slate-400";
+  const rowClass = isPanel
+    ? "flex items-center gap-2"
+    : "flex items-center gap-1.5 text-sm text-slate-400";
+
   if (unit === "metric") {
     const { meters, centimeters } = mmToMetric(valueMm);
     return (
-      <label className="flex items-center gap-1 text-xs text-slate-400">
-        {label}
+      <label className={rowClass}>
+        <span className={labelClass}>{label}</span>
         <input
           type="number"
+          inputMode="numeric"
           min={0}
           step={1}
-          value={meters}
+          value={meters === 0 ? "" : meters}
+          placeholder="0"
           onChange={(event) => {
             const m = Number(event.target.value);
             onChangeMm(metricToMm(Number.isFinite(m) ? m : 0, centimeters));
           }}
-          className={`w-9 ${EDITOR_INPUT}`}
+          className={inputClass}
         />
-        m
+        <span className={isPanel ? "text-sm text-zinc-500" : undefined}>m</span>
         <input
           type="number"
+          inputMode="decimal"
           min={0}
           step={1}
-          value={centimeters}
+          value={centimeters === 0 ? "" : centimeters}
+          placeholder="0"
           onChange={(event) => {
             const cm = Number(event.target.value);
             onChangeMm(metricToMm(meters, Number.isFinite(cm) ? cm : 0));
           }}
-          className={`w-11 ${EDITOR_INPUT}`}
+          className={inchInputClass}
         />
-        cm
+        <span className={isPanel ? "text-sm text-zinc-500" : undefined}>cm</span>
       </label>
     );
   }
 
   const { feet, inches } = mmToImperial(valueMm);
   return (
-    <label className="flex items-center gap-1 text-xs text-slate-400">
-      {label}
+    <label className={rowClass}>
+      <span className={labelClass}>{label}</span>
       <input
         type="number"
+        inputMode="numeric"
         min={0}
         step={1}
-        value={feet}
+        value={feet === 0 ? "" : feet}
+        placeholder="0"
         onChange={(event) => {
           const ft = Number(event.target.value);
           onChangeMm(imperialToMm(Number.isFinite(ft) ? ft : 0, inches));
         }}
-        className={`w-9 ${EDITOR_INPUT}`}
+        className={inputClass}
       />
-      &apos;
+      <span className={isPanel ? "text-sm text-zinc-500" : undefined}>&apos;</span>
       <input
         type="number"
+        inputMode="decimal"
         min={0}
         step={0.5}
-        value={inches}
+        value={inches === 0 ? "" : inches}
+        placeholder="0"
         onChange={(event) => {
           const inch = Number(event.target.value);
           onChangeMm(imperialToMm(feet, Number.isFinite(inch) ? inch : 0));
         }}
-        className={`w-11 ${EDITOR_INPUT}`}
+        className={inchInputClass}
       />
-      &quot;
+      <span className={isPanel ? "text-sm text-zinc-500" : undefined}>&quot;</span>
     </label>
   );
 }

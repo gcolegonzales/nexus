@@ -1,9 +1,9 @@
-import type { Hallway, HallwayWaypoint, WallSide } from "@/tools/room-coat/types/state";
+import type { Hallway, HallwayWaypoint } from "@/tools/room-coat/types/state";
 
 export type RoomWallLink = {
   kind: "room";
   placementId: string;
-  wall: WallSide;
+  wallIndex: number;
   offsetMm: number;
 };
 
@@ -27,10 +27,10 @@ export function isHallwayWallLink(link: WallLink): link is HallwayWallLink {
 
 export function roomWallLink(
   placementId: string,
-  wall: WallSide,
+  wallIndex: number,
   offsetMm: number,
 ): RoomWallLink {
-  return { kind: "room", placementId, wall, offsetMm };
+  return { kind: "room", placementId, wallIndex, offsetMm };
 }
 
 export function hallwayWallLink(
@@ -44,7 +44,7 @@ export function hallwayWallLink(
 
 export function wallLinkKey(link: WallLink): string {
   if (isRoomWallLink(link)) {
-    return `room:${link.placementId}:${link.wall}:${Math.round(link.offsetMm)}`;
+    return `room:${link.placementId}:${link.wallIndex}:${Math.round(link.offsetMm)}`;
   }
   return `hallway:${link.hallwayId}:${link.segIndex}:${link.side}:${Math.round(link.offsetMm)}`;
 }

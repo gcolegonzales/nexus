@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { createId } from "@/shared/ids/createId";
+import { PAGE_CONTAINER } from "@/shared/ui/page-container";
 import { ensureHouseAssets, isHouseAsset } from "@/tools/home-maintenance/lib/house-asset";
 import {
   createHome,
@@ -352,7 +353,7 @@ export function HomeMaintenanceProvider({ children }: { children: ReactNode }) {
 
   if (!value) {
     return (
-      <div className="mx-auto max-w-6xl px-4 py-16 text-muted">
+      <div className={`${PAGE_CONTAINER} py-16 text-muted`}>
         Loading home maintenance…
       </div>
     );

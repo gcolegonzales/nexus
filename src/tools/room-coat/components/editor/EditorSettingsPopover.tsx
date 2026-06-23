@@ -6,6 +6,7 @@ import { useRoomCoat } from "@/tools/room-coat/RoomCoatProvider";
 import type { UnitPreference } from "@/tools/room-coat/types/state";
 import {
   EDITOR_CHROME,
+  EDITOR_CHROME_PANEL,
   EDITOR_CHROME_BUTTON,
   EDITOR_CHROME_BUTTON_ACTIVE,
   EDITOR_CHROME_MUTED,
@@ -18,7 +19,17 @@ function shortUnitLabel(unit: UnitPreference): string {
 }
 
 export function EditorSettingsPopover() {
-  const { state, setUnitPreference, setShowWallLabels } = useRoomCoat();
+  const {
+    state,
+    setUnitPreference,
+    setShowWallLabels,
+    setShowRoomLabels,
+    setShowFloorGrid,
+    setShowFurnishings,
+    setShowSnapPoints,
+    setShowClearanceLabels,
+    setSnapMode,
+  } = useRoomCoat();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -45,8 +56,8 @@ export function EditorSettingsPopover() {
         aria-expanded={open}
         aria-label="Editor settings"
         onClick={() => setOpen((current) => !current)}
-        className={`inline-flex items-center justify-center border border-white/10 p-1.5 backdrop-blur-md ${EDITOR_CLICKABLE} ${
-          open ? EDITOR_CHROME_BUTTON_ACTIVE : `${EDITOR_CHROME_BUTTON} bg-slate-900/90`
+        className={`inline-flex items-center justify-center rounded-lg p-1.5 ${EDITOR_CHROME} ${EDITOR_CLICKABLE} ${
+          open ? EDITOR_CHROME_BUTTON_ACTIVE : EDITOR_CHROME_BUTTON
         }`}
       >
         <SettingsIcon />
@@ -55,7 +66,7 @@ export function EditorSettingsPopover() {
       <PopoverPanel
         open={open}
         align="end"
-        className={`right-0 top-full !mt-1 w-56 rounded-md p-2.5 ${EDITOR_CHROME}`}
+        className={`right-0 top-full !mt-1 w-56 rounded-lg p-2.5 ${EDITOR_CHROME_PANEL}`}
       >
         <p
           className={`mb-2 text-[10px] font-medium uppercase tracking-wide ${EDITOR_CHROME_MUTED}`}
@@ -69,7 +80,7 @@ export function EditorSettingsPopover() {
               Units
             </p>
             <div
-              className="inline-flex w-full items-center gap-px rounded-md border border-white/10 bg-slate-950/60 p-0.5"
+              className="inline-flex w-full items-center gap-px rounded-md border border-zinc-500/35 bg-zinc-900/70 p-0.5"
               role="group"
               aria-label="Measurement units"
             >
@@ -91,7 +102,112 @@ export function EditorSettingsPopover() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-white/10 px-0.5 py-1.5 pt-2.5">
+          <div className="flex items-center justify-between gap-3 border-t border-zinc-500/30 px-0.5 py-1.5 pt-2.5">
+            <label
+              htmlFor="editor-show-floor-grid"
+              className="cursor-pointer text-xs leading-none text-slate-200"
+            >
+              Grid lines
+            </label>
+            <ToggleSwitch
+              id="editor-show-floor-grid"
+              size="sm"
+              checked={state.viewSettings.showFloorGrid}
+              onChange={(show) => void setShowFloorGrid(show)}
+              aria-label="Show floor grid lines"
+              className="shrink-0"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-zinc-500/30 px-0.5 py-1.5">
+            <label
+              htmlFor="editor-show-furnishings"
+              className="cursor-pointer text-xs leading-none text-slate-200"
+            >
+              Furnishings
+            </label>
+            <ToggleSwitch
+              id="editor-show-furnishings"
+              size="sm"
+              checked={state.viewSettings.showFurnishings}
+              onChange={(show) => void setShowFurnishings(show)}
+              aria-label="Show furnishings"
+              className="shrink-0"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-zinc-500/30 px-0.5 py-1.5">
+            <label
+              htmlFor="editor-show-snap-points"
+              className="cursor-pointer text-xs leading-none text-slate-200"
+            >
+              Snap points
+            </label>
+            <ToggleSwitch
+              id="editor-show-snap-points"
+              size="sm"
+              checked={state.viewSettings.showSnapPoints}
+              onChange={(show) => void setShowSnapPoints(show)}
+              aria-label="Show snap points"
+              className="shrink-0"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-zinc-500/30 px-0.5 py-1.5">
+            <label
+              htmlFor="editor-show-clearance-labels"
+              className="cursor-pointer text-xs leading-none text-slate-200"
+            >
+              Clearance labels
+            </label>
+            <ToggleSwitch
+              id="editor-show-clearance-labels"
+              size="sm"
+              checked={state.viewSettings.showClearanceLabels}
+              onChange={(show) => void setShowClearanceLabels(show)}
+              aria-label="Show clearance labels"
+              className="shrink-0"
+            />
+          </div>
+
+          <div className="border-t border-zinc-500/30 px-0.5 py-1.5">
+            <p className={`mb-1 text-[10px] font-medium ${EDITOR_CHROME_MUTED}`}>
+              Snap mode
+            </p>
+            <select
+              className="w-full rounded-md border border-zinc-500/35 bg-zinc-900/80 px-2 py-1 text-xs text-zinc-100"
+              value={state.viewSettings.snapMode}
+              onChange={(event) =>
+                void setSnapMode(
+                  event.target.value as typeof state.viewSettings.snapMode,
+                )
+              }
+            >
+              <option value="all">All snaps</option>
+              <option value="grid-walls">Grid + walls</option>
+              <option value="grid">Grid only</option>
+              <option value="off">Off</option>
+            </select>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-zinc-500/30 px-0.5 py-1.5">
+            <label
+              htmlFor="editor-show-room-labels"
+              className="cursor-pointer text-xs leading-none text-slate-200"
+            >
+              Room names
+            </label>
+            <ToggleSwitch
+              id="editor-show-room-labels"
+              size="sm"
+              checked={state.viewSettings.showRoomLabels}
+              onChange={(show) => void setShowRoomLabels(show)}
+              aria-label="Show room names"
+              className="shrink-0"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-zinc-500/30 px-0.5 py-1.5">
             <label
               htmlFor="editor-show-wall-labels"
               className="cursor-pointer text-xs leading-none text-slate-200"

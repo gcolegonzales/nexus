@@ -39,6 +39,7 @@ export function buildPaintScheduleForUnit(
 
   for (const room of placedRooms) {
     for (const surface of buildSurfacesForPlacedRoom(room)) {
+      if (surface.category === "floor") continue;
       const resolved = resolveSurfacePaint(
         room,
         surface,
@@ -63,6 +64,7 @@ export function buildPaintScheduleForUnit(
 
   for (const hallway of hallways) {
     for (const surface of buildSurfacesForHallway(hallway)) {
+      if (surface.category === "floor") continue;
       const resolved = resolveSurfacePaint(
         hallway,
         surface,

@@ -4,15 +4,16 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { useRoomCoat } from "@/tools/room-coat/RoomCoatProvider";
 import { DimensionInput } from "@/tools/room-coat/components/DimensionInput";
 import { RoomFootprintPreview } from "@/tools/room-coat/components/RoomFootprintPreview";
-import {
-  accordionCardClassName,
-  accordionCardTransitionClassName,
-  accordionHeaderClassName,
-  accordionPanelClassName,
-} from "@/tools/room-coat/components/accordion-styles";
 import { formatMm } from "@/tools/room-coat/lib/units";
 import type { Room, UnitPreference } from "@/tools/room-coat/types/state";
-import { AccordionCaret, Badge, Card, Collapsible, Input } from "@nexus/ui";
+import {
+  AccordionCard,
+  accordionHeaderDescriptionClassName,
+  accordionHeaderTitleClassName,
+  Badge,
+  Input,
+  useToast,
+} from "@nexus/ui";
 import { Button, FormActions } from "@nexus/next";
 
 interface RoomCatalogCardProps {
@@ -40,6 +41,7 @@ export function RoomCatalogCard({
   inActiveUnit,
 }: RoomCatalogCardProps) {
   const { updateRoom, deleteRoom } = useRoomCoat();
+  const toast = useToast();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<RoomDraft>(() => draftFromRoom(room));
@@ -87,6 +89,7 @@ export function RoomCatalogCard({
       lengthMm: draft.lengthMm,
       heightMm: draft.heightMm,
     });
+    toast.success("Room saved");
     setEditing(false);
   }
 
@@ -99,38 +102,27 @@ export function RoomCatalogCard({
   const summaryDraft = editing ? draft : draftFromRoom(room);
 
   return (
-    <Card
-      padding={false}
-      className={`${accordionCardTransitionClassName} ${accordionCardClassName(open)}`}
-    >
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={handleHeaderClick}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            handleHeaderClick();
-          }
-        }}
-        className={accordionHeaderClassName(open)}
-      >
-        <div className="flex min-w-0 flex-1 items-start gap-3">
+    <AccordionCard
+      open={open}
+      onHeaderClick={handleHeaderClick}
+      panelId={panelId}
+      header={
+        <div className="flex min-w-0 items-start gap-3">
           <RoomFootprintPreview
             widthMm={room.widthMm}
             lengthMm={room.lengthMm}
             label={previewLabel}
           />
-          <div className="min-w-0 space-y-2">
+          <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-lg font-semibold text-text">
+              <h3 className={`truncate ${accordionHeaderTitleClassName}`}>
                 {room.name}
               </h3>
               {inActiveUnit && <Badge variant="sky">Active unit</Badge>}
             </div>
-            <p className="text-sm text-muted">{dimensionLabel}</p>
+            <p className={accordionHeaderDescriptionClassName}>
+              {dimensionLabel}
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {attachedUnits.length === 0 ? (
                 <Badge>Not placed</Badge>
@@ -144,129 +136,128 @@ export function RoomCatalogCard({
             </div>
           </div>
         </div>
+      }
+      headerActions={
+        !editing ? (
+          <Button
+            variant="secondary"
+            className="!px-3 !py-1.5 text-xs"
+            onClick={startEditing}
+          >
+            Edit
+          </Button>
+        ) : null
+      }
+    >
+      {editing ? (
+        <div className="space-y-5">
+          <Input
+            label="Room name"
+            value={draft.name}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                name: event.target.value,
+              }))
+            }
+            autoFocus
+          />
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          {!editing && (
-            <Button variant="ghost" onClick={startEditing}>
-              Edit
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-text">Dimensions</p>
+            <div className="grid gap-4 lg:grid-cols-3">
+              <DimensionInput
+                label="Width"
+                valueMm={draft.widthMm}
+                onChangeMm={(widthMm) =>
+                  setDraft((current) => ({ ...current, widthMm }))
+                }
+              />
+              <DimensionInput
+                label="Length"
+                valueMm={draft.lengthMm}
+                onChangeMm={(lengthMm) =>
+                  setDraft((current) => ({ ...current, lengthMm }))
+                }
+              />
+              <DimensionInput
+                label="Height"
+                valueMm={draft.heightMm}
+                onChangeMm={(heightMm) =>
+                  setDraft((current) => ({ ...current, heightMm }))
+                }
+              />
+            </div>
+          </div>
+
+          <RoomFootprintPreview
+            widthMm={summaryDraft.widthMm}
+            lengthMm={summaryDraft.lengthMm}
+            label={`${formatMm(summaryDraft.widthMm, unitPreference)} × ${formatMm(summaryDraft.lengthMm, unitPreference)}`}
+          />
+
+          <FormActions
+            onSave={(event) => void handleSave(event)}
+            onCancel={handleCancel}
+          />
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <dl className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted">
+                Width
+              </dt>
+              <dd className="mt-1 text-sm text-text">
+                {formatMm(room.widthMm, unitPreference)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted">
+                Length
+              </dt>
+              <dd className="mt-1 text-sm text-text">
+                {formatMm(room.lengthMm, unitPreference)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted">
+                Height
+              </dt>
+              <dd className="mt-1 text-sm text-text">
+                {formatMm(room.heightMm, unitPreference)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted">
+                Doors
+              </dt>
+              <dd className="mt-1 text-sm text-text">{room.doors.length}</dd>
+            </div>
+          </dl>
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={startEditing}>
+              Edit room
             </Button>
-          )}
-          <AccordionCaret open={open} />
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (
+                  confirm(
+                    `Delete "${room.name}" from the catalog? It will be removed from all units.`,
+                  )
+                ) {
+                  void deleteRoom(room.id);
+                  toast.success("Room deleted");
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </div>
         </div>
-      </div>
-
-      <Collapsible open={open} id={panelId} innerClassName={accordionPanelClassName}>
-        <div onClick={(event) => event.stopPropagation()}>
-          {editing ? (
-              <div className="space-y-5">
-                <Input
-                  label="Room name"
-                  value={draft.name}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-                      name: event.target.value,
-                    }))
-                  }
-                  autoFocus
-                />
-
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-text">Dimensions</p>
-                  <div className="grid gap-4 lg:grid-cols-3">
-                    <DimensionInput
-                      label="Width"
-                      valueMm={draft.widthMm}
-                      onChangeMm={(widthMm) =>
-                        setDraft((current) => ({ ...current, widthMm }))
-                      }
-                    />
-                    <DimensionInput
-                      label="Length"
-                      valueMm={draft.lengthMm}
-                      onChangeMm={(lengthMm) =>
-                        setDraft((current) => ({ ...current, lengthMm }))
-                      }
-                    />
-                    <DimensionInput
-                      label="Height"
-                      valueMm={draft.heightMm}
-                      onChangeMm={(heightMm) =>
-                        setDraft((current) => ({ ...current, heightMm }))
-                      }
-                    />
-                  </div>
-                </div>
-
-                <RoomFootprintPreview
-                  widthMm={summaryDraft.widthMm}
-                  lengthMm={summaryDraft.lengthMm}
-                  label={`${formatMm(summaryDraft.widthMm, unitPreference)} × ${formatMm(summaryDraft.lengthMm, unitPreference)}`}
-                />
-
-                <FormActions
-                  onSave={(event) => void handleSave(event)}
-                  onCancel={handleCancel}
-                />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <dl className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <dt className="text-xs font-medium uppercase tracking-wide text-muted">
-                      Width
-                    </dt>
-                    <dd className="mt-1 text-sm text-text">
-                      {formatMm(room.widthMm, unitPreference)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-medium uppercase tracking-wide text-muted">
-                      Length
-                    </dt>
-                    <dd className="mt-1 text-sm text-text">
-                      {formatMm(room.lengthMm, unitPreference)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-medium uppercase tracking-wide text-muted">
-                      Height
-                    </dt>
-                    <dd className="mt-1 text-sm text-text">
-                      {formatMm(room.heightMm, unitPreference)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-medium uppercase tracking-wide text-muted">
-                      Doors
-                    </dt>
-                    <dd className="mt-1 text-sm text-text">
-                      {room.doors.length}
-                    </dd>
-                  </div>
-                </dl>
-
-                <div className="flex flex-wrap gap-2">
-                  <Button onClick={startEditing}>Edit room</Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Delete "${room.name}" from the catalog? It will be removed from all units.`,
-                        )
-                      ) {
-                        void deleteRoom(room.id);
-                      }
-                    }}
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </div>
-            )}
-        </div>
-      </Collapsible>
-    </Card>
+      )}
+    </AccordionCard>
   );
 }

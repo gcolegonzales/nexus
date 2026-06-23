@@ -50,10 +50,12 @@ function WallLabelMesh({
   spec,
   label,
   wallHex,
+  interiorFaceOnly = false,
 }: {
   spec: SurfaceMeshSpec;
   label: string;
   wallHex: string;
+  interiorFaceOnly?: boolean;
 }) {
   const groupRef = useRef<Group>(null);
   const camera = useThree((state) => state.camera);
@@ -80,14 +82,33 @@ function WallLabelMesh({
     if (!group) return;
 
     toCamera.copy(camera.position).sub(basePosition);
-    const onFrontFace = toCamera.dot(wallNormal) >= 0;
+    const interiorFacingCamera = toCamera.dot(wallNormal) >= 0;
+
+    if (interiorFaceOnly && !interiorFacingCamera) {
+      group.visible = false;
+      return;
+    }
+
+    group.visible = true;
+
+    if (interiorFaceOnly || interiorFacingCamera) {
+      group.position
+        .copy(basePosition)
+        .addScaledVector(wallNormal, LABEL_OFFSET_M);
+      group.rotation.set(
+        spec.rotation[0],
+        spec.rotation[1],
+        spec.rotation[2],
+      );
+      return;
+    }
 
     group.position
       .copy(basePosition)
-      .addScaledVector(wallNormal, onFrontFace ? LABEL_OFFSET_M : -LABEL_OFFSET_M);
+      .addScaledVector(wallNormal, -LABEL_OFFSET_M);
     group.rotation.set(
       spec.rotation[0],
-      spec.rotation[1] + (onFrontFace ? 0 : Math.PI),
+      spec.rotation[1] + Math.PI,
       spec.rotation[2],
     );
   });
@@ -118,11 +139,14 @@ export function WallSurfaceLabels({
   space,
   paints,
   unitDefaultCoat,
+  interiorFaceOnly = false,
 }: {
   specs: SurfaceMeshSpec[];
   space: PlacedRoom | Hallway;
   paints: Paint[];
   unitDefaultCoat?: RoomCoat;
+  /** Match dollhouse wall culling — hide labels on walls whose interior face is not visible. */
+  interiorFaceOnly?: boolean;
 }) {
   const isRoom = "placementId" in space;
   const hallway = isRoom ? undefined : space;
@@ -153,6 +177,7 @@ export function WallSurfaceLabels({
             spec={spec}
             label={label}
             wallHex={wallHex === UNSET_PAINT_HEX ? DEFAULT_WALL_HEX : wallHex}
+            interiorFaceOnly={interiorFaceOnly}
           />
         );
       })}

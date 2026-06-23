@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PAGE_CONTAINER } from "@/shared/ui/page-container";
 import { HubMenu } from "@/shared/ui/hub/HubMenu";
 import { ToolContextLabel } from "@/shared/ui/hub/ToolContextLabel";
 import { NexusLogo } from "@/shared/ui/illustrations/NexusLogo";
@@ -6,7 +7,7 @@ import { NexusLogo } from "@/shared/ui/illustrations/NexusLogo";
 export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-surface/90 backdrop-blur-md">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className={`${PAGE_CONTAINER} flex h-14 items-center justify-between gap-4`}>
         <div className="flex min-w-0 items-center gap-2">
           <Link
             href="/"

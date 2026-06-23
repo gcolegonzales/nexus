@@ -4,6 +4,12 @@ import {
   parseRoomWallSurfaceId,
 } from "@/tools/room-coat/lib/editor-surfaces";
 import type { SurfaceMeshSpec } from "@/tools/room-coat/lib/room-geometry";
+import { buildHallwaySurfaceSpecs, hallwayFloorAreaMm2 as hallwayFloorAreaFromGeometry } from "@/tools/room-coat/lib/hallway-geometry";
+import { buildRoomSurfaceSpecs } from "@/tools/room-coat/lib/room-geometry";
+import {
+  buildSurfacesForHallway,
+  buildSurfacesForPlacedRoom,
+} from "@/tools/room-coat/lib/build-surfaces";
 import {
   hallwayCornerCeilingLabel,
   hallwayCornerSurfaceLabel,
@@ -17,6 +23,11 @@ import {
   roomWallSurfaceLabel,
   surfaceCategoryTitle,
 } from "@/tools/room-coat/lib/surface-display-labels";
+import {
+  boundsFromVertices,
+  polygonAreaMm2,
+  roomVertices,
+} from "@/tools/room-coat/lib/room-shape";
 import { formatArea, formatMm } from "@/tools/room-coat/lib/units";
 import type {
   Hallway,
@@ -34,9 +45,12 @@ export interface SurfaceDimensionsMm {
 
 export interface EditorHoverMeasurement {
   surfaceId: string;
+  category: SurfaceMeshSpec["category"] | "furnishing-face";
   title: string;
   caption: string;
   dimensions: string;
+  /** World-space raycast hit (meters) for anchoring the in-scene label. */
+  anchorM?: [number, number, number];
 }
 
 export function meshSpecDimensionsMm(spec: SurfaceMeshSpec): SurfaceDimensionsMm {
@@ -55,27 +69,15 @@ export function surfaceAreaMm2(
 }
 
 export function roomFloorAreaMm2(room: PlacedRoom): number {
+  const vertices = roomVertices(room);
+  if (room.closed && vertices.length >= 3) {
+    return polygonAreaMm2(vertices);
+  }
   return room.widthMm * room.lengthMm;
 }
 
 export function hallwayFloorAreaMm2(hallway: Hallway): number {
-  const points = hallway.waypointsMm;
-  if (points.length < 2) return 0;
-
-  let area = 0;
-  for (let i = 0; i < points.length - 1; i++) {
-    const lengthMm = Math.hypot(
-      points[i + 1].xMm - points[i].xMm,
-      points[i + 1].zMm - points[i].zMm,
-    );
-    area += lengthMm * hallway.widthMm;
-  }
-
-  for (let i = 1; i < points.length - 1; i++) {
-    area += hallway.widthMm * hallway.widthMm;
-  }
-
-  return Math.round(area);
+  return hallwayFloorAreaFromGeometry(hallway);
 }
 
 export function unitTotalFloorAreaMm2(
@@ -107,6 +109,8 @@ function resolveSurfaceTitle(
         return roomCeilingSurfaceLabel(space.name);
       case "door":
         return surfaceCategoryTitle("door");
+      case "window":
+        return surfaceCategoryTitle("window");
       case "baseboard":
         return surfaceCategoryTitle("baseboard");
       case "wall": {
@@ -114,7 +118,7 @@ function resolveSurfaceTitle(
         if (!parsed) return surfaceCategoryTitle("wall");
         return roomWallSurfaceLabel(
           space.name,
-          parsed.wall,
+          parsed.wallIndex,
           parsed.segIndex,
           parsed.segIndex > 0,
         );
@@ -179,6 +183,7 @@ export function formatSurfaceMeasurement(
   switch (category) {
     case "wall":
     case "door":
+    case "window":
       return `${formatMm(primaryMm, unit)} × ${formatMm(secondaryMm, unit)}`;
     case "baseboard":
       return formatMm(primaryMm, unit);
@@ -206,6 +211,8 @@ export function surfaceMeasurementCaption(
       return "Width × Length · Area";
     case "door":
       return "Width × Height";
+    case "window":
+      return "Width × Height";
     default:
       return "Dimensions";
   }
@@ -216,14 +223,93 @@ export function measureFromMeshSpec(
   space: PlacedRoom | Hallway,
   unit: UnitPreference,
   surfaceLabel?: string,
+  anchorM?: [number, number, number],
 ): EditorHoverMeasurement {
   const dims = meshSpecDimensionsMm(spec);
+  let dimensions = formatSurfaceMeasurement(spec.category, dims, unit);
+
+  if (
+    (spec.category === "floor" || spec.category === "ceiling") &&
+    spec.polygonLocalM &&
+    "placementId" in space
+  ) {
+    const vertices = roomVertices(space);
+    const bounds = boundsFromVertices(vertices);
+    const polygonDims: SurfaceDimensionsMm = {
+      primaryMm: Math.round(bounds.widthMm),
+      secondaryMm: Math.round(bounds.lengthMm),
+    };
+    const areaMm2 = polygonAreaMm2(vertices);
+    dimensions = `${formatMm(polygonDims.primaryMm, unit)} × ${formatMm(polygonDims.secondaryMm, unit)} · ${formatArea(areaMm2, unit)}`;
+  }
+
   return {
     surfaceId: spec.surfaceId,
+    category: spec.category,
     title: resolveSurfaceTitle(spec, space, surfaceLabel),
     caption: surfaceMeasurementCaption(spec.category),
-    dimensions: formatSurfaceMeasurement(spec.category, dims, unit),
+    dimensions,
+    anchorM,
   };
+}
+
+export function measurementForSurfaceId(
+  rooms: PlacedRoom[],
+  hallways: Hallway[],
+  surfaceId: string,
+  unit: UnitPreference,
+  options: { showCeiling: boolean },
+): EditorHoverMeasurement | null {
+  for (const room of rooms) {
+    const specs = buildRoomSurfaceSpecs(room, {
+      showCeiling: options.showCeiling,
+    });
+    const spec = specs.find((item) => item.surfaceId === surfaceId);
+    if (!spec) continue;
+    const surface = buildSurfacesForPlacedRoom(room).find(
+      (item) => item.id === surfaceId,
+    );
+    return measureFromMeshSpec(spec, room, unit, surface?.label);
+  }
+
+  for (const hallway of hallways) {
+    const specs = buildHallwaySurfaceSpecs(hallway, {
+      showCeiling: options.showCeiling,
+    });
+    const spec = specs.find((item) => item.surfaceId === surfaceId);
+    if (!spec) continue;
+    const surface = buildSurfacesForHallway(hallway).find(
+      (item) => item.id === surfaceId,
+    );
+    return measureFromMeshSpec(spec, hallway, unit, surface?.label);
+  }
+
+  return null;
+}
+
+export function meshSpecForSurfaceId(
+  rooms: PlacedRoom[],
+  hallways: Hallway[],
+  surfaceId: string,
+  options: { showCeiling: boolean },
+): { spec: SurfaceMeshSpec; space: PlacedRoom | Hallway } | null {
+  for (const room of rooms) {
+    const specs = buildRoomSurfaceSpecs(room, {
+      showCeiling: options.showCeiling,
+    });
+    const spec = specs.find((item) => item.surfaceId === surfaceId);
+    if (spec) return { spec, space: room };
+  }
+
+  for (const hallway of hallways) {
+    const specs = buildHallwaySurfaceSpecs(hallway, {
+      showCeiling: options.showCeiling,
+    });
+    const spec = specs.find((item) => item.surfaceId === surfaceId);
+    if (spec) return { spec, space: hallway };
+  }
+
+  return null;
 }
 
 export function hallwayPathLengthMm(points: HallwayWaypoint[]): number {

@@ -10,19 +10,13 @@ import {
 import { assetNeedsInfo } from "@/tools/home-maintenance/lib/needs-info";
 import { NeedsInfoBadge } from "@/tools/home-maintenance/components/NeedsInfoBadge";
 import type { Asset } from "@/tools/home-maintenance/types/asset";
-import { EditIcon } from "@nexus/ui";
-import { IconActionButton } from "@nexus/ui";
-import { FormActions } from "@nexus/next";
-import { AccordionCaret } from "@nexus/ui";
-import { Collapsible } from "@nexus/ui";
-import { Badge } from "@nexus/ui";
-import { Card } from "@nexus/ui";
 import {
-  accordionCardClassName,
-  accordionCardTransitionClassName,
-  accordionHeaderClassName,
-  accordionPanelClassName,
-} from "@/tools/home-maintenance/components/accordion-styles";
+  AccordionCard,
+  Badge,
+  EditIcon,
+  IconActionButton,
+} from "@nexus/ui";
+import { FormActions } from "@nexus/next";
 
 interface AssetAccordionRowProps {
   asset: Asset;
@@ -82,27 +76,14 @@ export function AssetAccordionRow({ asset }: AssetAccordionRowProps) {
   const summaryAsset = editing ? asset : draft;
 
   return (
-    <Card
-      padding={false}
-      className={`${accordionCardTransitionClassName} ${accordionCardClassName(open)}`}
-    >
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={handleHeaderClick}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            handleHeaderClick();
-          }
-        }}
-        className={accordionHeaderClassName(open)}
-      >
+    <AccordionCard
+      open={open}
+      onHeaderClick={handleHeaderClick}
+      panelId={panelId}
+      header={
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-semibold text-text">
+            <h3 className="text-lg font-semibold leading-snug text-text">
               {getAssetCardTitle(summaryAsset)}
             </h3>
             {summaryAsset.model && (
@@ -111,37 +92,31 @@ export function AssetAccordionRow({ asset }: AssetAccordionRowProps) {
           </div>
           <NeedsInfoBadge flags={assetNeedsInfo(summaryAsset)} />
         </div>
+      }
+      headerActions={
+        !editing ? (
+          <IconActionButton
+            label={`Edit ${getAssetLabel(summaryAsset)}`}
+            onClick={handleEditClick}
+          >
+            <EditIcon />
+          </IconActionButton>
+        ) : null
+      }
+    >
+      <AssetForm
+        asset={draft}
+        onChange={setDraft}
+        readOnly={!editing}
+        showNeedsInfoBadge={false}
+      />
 
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          {!editing && (
-            <IconActionButton
-              label={`Edit ${getAssetLabel(summaryAsset)}`}
-              onClick={handleEditClick}
-            >
-              <EditIcon />
-            </IconActionButton>
-          )}
-          <AccordionCaret open={open} />
-        </div>
-      </div>
-
-      <Collapsible open={open} id={panelId} innerClassName={accordionPanelClassName}>
-        <div onClick={(event) => event.stopPropagation()}>
-          <AssetForm
-            asset={draft}
-            onChange={setDraft}
-            readOnly={!editing}
-            showNeedsInfoBadge={false}
-          />
-
-          {editing && (
-            <FormActions
-              onCancel={handleCancel}
-              onSave={(event) => void handleSave(event)}
-            />
-          )}
-        </div>
-      </Collapsible>
-    </Card>
+      {editing && (
+        <FormActions
+          onCancel={handleCancel}
+          onSave={(event) => void handleSave(event)}
+        />
+      )}
+    </AccordionCard>
   );
 }

@@ -1,13 +1,22 @@
-import type { PlacedRoom, WallSide } from "@/tools/room-coat/types/state";
-import { projectPointToWall } from "@/tools/room-coat/lib/wall-openings";
+import type { PlacedRoom } from "@/tools/room-coat/types/state";
+import { projectPointToWall, wallSegmentByIndex } from "@/tools/room-coat/lib/wall-openings";
 
-const MM_TO_M = 0.001;
-
-export type EditorTool = "paint" | "move" | "add-room" | "hallway" | "open-walls";
+export type EditorTool =
+  | "select"
+  | "paint"
+  | "move"
+  | "furnish"
+  | "snap-point"
+  | "measure"
+  | "add-room"
+  | "hallway"
+  | "open-walls"
+  | "add-door"
+  | "add-window";
 
 export interface RoomWallHit {
   placementId: string;
-  wall: WallSide;
+  wallIndex: number;
   segIndex: number;
   /** World coordinates in mm (on wall surface). */
   xMm: number;
@@ -21,17 +30,16 @@ export interface RoomWallHit {
   faceNormalZ: number;
 }
 
-const WALL_PATTERN =
-  /^(.+):wall:(north|south|east|west):(\d+)$/;
+const WALL_PATTERN = /^(.+):wall:(\d+):(\d+)$/;
 
 export function parseRoomWallSurfaceId(
   surfaceId: string,
-): { placementId: string; wall: WallSide; segIndex: number } | null {
+): { placementId: string; wallIndex: number; segIndex: number } | null {
   const match = surfaceId.match(WALL_PATTERN);
   if (!match) return null;
   return {
     placementId: match[1],
-    wall: match[2] as WallSide,
+    wallIndex: Number(match[2]),
     segIndex: Number(match[3]),
   };
 }
@@ -69,17 +77,18 @@ export function parseHallwayCornerSurfaceId(
   return { hallwayId: match[1], cornerIndex: Number(match[2]) };
 }
 
+/** `xMm` / `zMm` must be in floor-local coordinates. */
 export function roomWallHitFromPointer(
   room: PlacedRoom,
-  wall: WallSide,
-  worldXM: number,
-  worldZM: number,
+  wallIndex: number,
+  xMm: number,
+  zMm: number,
   faceNormalX = 0,
   faceNormalZ = 0,
 ): RoomWallHit | null {
-  const pointerXMm = worldXM / MM_TO_M;
-  const pointerZMm = worldZM / MM_TO_M;
-  const projected = projectPointToWall(room, wall, pointerXMm, pointerZMm);
+  const pointerXMm = xMm;
+  const pointerZMm = zMm;
+  const projected = projectPointToWall(room, wallIndex, pointerXMm, pointerZMm);
   if (!projected) return null;
 
   const len = Math.hypot(faceNormalX, faceNormalZ);
@@ -88,7 +97,7 @@ export function roomWallHitFromPointer(
 
   return {
     placementId: room.placementId,
-    wall,
+    wallIndex,
     segIndex: 0,
     xMm: projected.x,
     zMm: projected.z,
@@ -100,20 +109,59 @@ export function roomWallHitFromPointer(
   };
 }
 
-export const EDITOR_TOOLS: Array<{ id: EditorTool; label: string }> = [
-  { id: "move", label: "Move rooms" },
-  { id: "paint", label: "Paint" },
-  { id: "add-room", label: "Add room" },
-  { id: "hallway", label: "Draw hallway" },
-  { id: "open-walls", label: "Open walls" },
+export function roomWallHitFromOpeningCenter(
+  room: PlacedRoom,
+  wallIndex: number,
+  offsetFromCornerMm: number,
+  widthMm: number,
+): RoomWallHit | null {
+  const edge = wallSegmentByIndex(room, wallIndex);
+  if (!edge) return null;
+  const offsetMm = offsetFromCornerMm + widthMm / 2;
+  const t = offsetMm / edge.lengthMm;
+  const xMm = edge.x1 + (edge.x2 - edge.x1) * t;
+  const zMm = edge.z1 + (edge.z2 - edge.z1) * t;
+  return roomWallHitFromPointer(
+    room,
+    wallIndex,
+    xMm,
+    zMm,
+    edge.outwardNormalX,
+    edge.outwardNormalZ,
+  );
+}
+
+export const EDITOR_TOOLS: Array<{
+  id: EditorTool;
+  label: string;
+  shortLabel: string;
+}> = [
+  { id: "select", label: "Select", shortLabel: "Select" },
+  { id: "move", label: "Move rooms", shortLabel: "Move" },
+  { id: "furnish", label: "Furnish", shortLabel: "Furnish" },
+  { id: "snap-point", label: "Snap points", shortLabel: "Snaps" },
+  { id: "measure", label: "Measure", shortLabel: "Measure" },
+  { id: "paint", label: "Paint", shortLabel: "Paint" },
 ];
 
 export const TOOL_HINTS: Record<EditorTool, string> = {
-  paint: "Click a wall, ceiling, baseboard, door, or hallway surface to inspect and override paint.",
-  move: "Click a room floor to select it, then drag the floor to reposition.",
-  "add-room": "Pick a catalog room below and add it to this unit.",
+  select:
+    "Click to select surfaces, rooms, and furnishings. Hover faces and edges for dimensions.",
+  paint: "Click a surface to inspect and override paint.",
+  move: "Click a room floor, door, window, or furnishing · drag to reposition",
+  furnish: "Pick a preset, click the floor to place, then drag to position. Press R to rotate.",
+  "snap-point":
+    "Click the floor to place a pin · click an existing pin to delete · drag to reposition · furniture faces show center snap points.",
+  measure:
+    "Click to set start, then end. The tape stays visible in other tools. Use Snap points to pin along it.",
+  "add-room":
+    "Click corners to draw a room (Enter to finish), drag for a quick rectangle, or use Square in the toolbar.",
   hallway:
-    "Click a wall to start, drag on the floor to stretch, click for corners or another wall to finish.",
+    "Set entrance A, then exit B. Use green alignment guides or drag the purple arrow — hallway draws when you pick a route.",
   "open-walls":
     "Click two points on the same wall to open it. Purple dot marks the first click.",
+  "add-door":
+    "Hover a wall to preview · click to place · Esc cancels",
+  "add-window":
+    "Click a wall where the window should go. A white glazed opening is shown.",
 };
