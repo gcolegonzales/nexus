@@ -73,7 +73,9 @@ function parseTask(value: unknown): Task | null {
     assetId: item.assetId,
     title: item.title,
     intervalMonths: Number(item.intervalMonths) || 1,
-    startOffsetDays: Number(item.startOffsetDays) || 30,
+    startOffsetDays: Number.isFinite(Number(item.startOffsetDays))
+      ? Number(item.startOffsetDays)
+      : 30,
     instructions: typeof item.instructions === "string" ? item.instructions : "",
     parts: Array.isArray(item.parts) ? item.parts : [],
     links: Array.isArray(item.links) ? item.links : [],
@@ -89,7 +91,7 @@ function parseTask(value: unknown): Task | null {
 
 function normalizeState(raw: Partial<HomeMaintenanceState>): HomeMaintenanceState {
   const migrated = migrateStateIfNeeded(raw as HomeMaintenanceState);
-  let normalized = ensureHouseAssets(migrated);
+  const normalized = ensureHouseAssets(migrated);
 
   const homes = Array.isArray(normalized.homes)
     ? normalized.homes.map(parseHome).filter((item): item is Home => item !== null)
@@ -188,6 +190,9 @@ export function importHomeMaintenanceSlice(
     return DEFAULT_HOME_MAINTENANCE_STATE;
   }
 
+  // Any data that survived normalizeState is real imported content, so mark it
+  // initialized — otherwise loadHomeMaintenance() would treat it as a first run
+  // and overwrite the imported homes/assets/tasks with a fresh seeded state.
   const imported = normalizeState(data as Partial<HomeMaintenanceState>);
-  return applyScheduleRegeneration(imported);
+  return applyScheduleRegeneration({ ...imported, initialized: true });
 }

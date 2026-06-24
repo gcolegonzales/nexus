@@ -97,6 +97,8 @@ export function TaskAccordionRow({
       intervalMonths: draft.intervalMonths,
       startOffsetDays: draft.startOffsetDays,
       instructions: draft.instructions,
+      parts: draft.parts,
+      links: draft.links,
     });
     setEditing(false);
   }

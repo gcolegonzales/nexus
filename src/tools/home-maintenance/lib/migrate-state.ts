@@ -28,8 +28,12 @@ interface LegacyHomeMaintenanceState {
 export function migrateStateIfNeeded(
   raw: LegacyHomeMaintenanceState,
 ): HomeMaintenanceState {
+  // Gate the V1->V2 migration on schemaVersion alone. Empty homes / missing
+  // activeHomeId on an already-v2+ state are normal recoverable conditions that
+  // normalizeState() handles downstream; running migrateV1ToV2 on such data
+  // would wrongly wrap it in a brand-new "Home" and orphan existing records.
   let state =
-    (raw.schemaVersion ?? 1) >= 2 && raw.homes?.length && raw.activeHomeId
+    (raw.schemaVersion ?? 1) >= 2
       ? (raw as HomeMaintenanceState)
       : migrateV1ToV2(raw);
 

@@ -66,7 +66,7 @@ export function CoatFieldsGrid({
           })
         }
         allowUnsetType
-        typeUnsetLabel="Unit default"
+        typeUnsetLabel={labelStyle === "default" ? "Not set" : "Unit default"}
       />
     </div>
   );

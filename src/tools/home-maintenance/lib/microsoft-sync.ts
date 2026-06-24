@@ -198,7 +198,17 @@ function createMicrosoftAdapter(
           );
           return task.microsoftCalendarEventId;
         } catch {
-          // Fall through to create a new event.
+          // PATCH failed: best-effort delete the (possibly stale) event before
+          // creating a replacement so we don't leave a duplicate behind.
+          try {
+            await graphFetch(
+              accessToken,
+              `https://graph.microsoft.com/v1.0/me/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(task.microsoftCalendarEventId)}`,
+              { method: "DELETE" },
+            );
+          } catch {
+            // Ignore: the event is likely already deleted.
+          }
         }
       }
 

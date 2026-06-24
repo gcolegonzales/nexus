@@ -407,8 +407,11 @@ export function resizeRoomFootprint(
     verticesMm: nextVertices,
     originXMm: nextBounds.centerXMm,
     originZMm: nextBounds.centerZMm,
-    widthMm: Math.max(catalogWidthMm, nextBounds.widthMm),
-    lengthMm: Math.max(catalogLengthMm, nextBounds.lengthMm),
+    // Report the actual resized footprint. Clamping to the previous dimensions
+    // with Math.max() made rooms impossible to shrink. MIN_FOOTPRINT_MM is
+    // already enforced on targetWidth/LengthMm above, so nextBounds is safe.
+    widthMm: nextBounds.widthMm,
+    lengthMm: nextBounds.lengthMm,
     wallOpenings,
   };
 }

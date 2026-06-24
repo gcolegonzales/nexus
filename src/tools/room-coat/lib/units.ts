@@ -17,7 +17,10 @@ export interface MetricDisplay {
 export function mmToImperial(mm: number): ImperialDisplay {
   const totalInches = mm / MM_PER_INCH;
   const feet = Math.floor(totalInches / 12);
-  const inches = Math.round((totalInches - feet * 12) * 10) / 10;
+  // Keep 0.01" resolution (~0.25 mm) so the mm -> imperial -> mm round-trip in
+  // dimension inputs is effectively lossless. formatMm() rounds to 0.1" purely
+  // for display.
+  const inches = Math.round((totalInches - feet * 12) * 100) / 100;
   return { feet, inches };
 }
 
@@ -48,13 +51,14 @@ export function formatMm(mm: number, unit: UnitPreference): string {
     return `${meters} m ${centimeters} cm`;
   }
   const { feet, inches } = mmToImperial(mm);
+  const displayInches = Math.round(inches * 10) / 10;
   if (feet === 0) {
-    return `${inches}"`;
+    return `${displayInches}"`;
   }
-  if (inches === 0) {
+  if (displayInches === 0) {
     return `${feet}'`;
   }
-  return `${feet}' ${inches}"`;
+  return `${feet}' ${displayInches}"`;
 }
 
 export function unitLabel(unit: UnitPreference): string {

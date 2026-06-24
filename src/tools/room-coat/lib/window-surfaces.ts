@@ -50,8 +50,16 @@ export function validateWindowPlacement(
     return { valid: false, reason: "Window must fit below the ceiling" };
   }
 
-  const centerOffset = window.offsetFromCornerMm + window.widthMm / 2;
-  if (offsetInOpening(room, window.wallIndex, centerOffset)) {
+  // Check the whole window span, not just its center, so a window whose edge
+  // (but not center) lands in a wall opening is still rejected.
+  const startOffset = window.offsetFromCornerMm;
+  const centerOffset = startOffset + window.widthMm / 2;
+  const endOffset = startOffset + window.widthMm;
+  if (
+    offsetInOpening(room, window.wallIndex, startOffset) ||
+    offsetInOpening(room, window.wallIndex, centerOffset) ||
+    offsetInOpening(room, window.wallIndex, endOffset)
+  ) {
     return { valid: false, reason: "Window cannot overlap a wall opening" };
   }
 

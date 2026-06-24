@@ -16,16 +16,23 @@ import { Badge, Card, StaggerItem } from "@nexus/ui";
 export default function AssetEditPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const { activeHome, activeAssets, upsertAsset, deleteAsset } =
+  const { activeHome, activeAssets, upsertAsset, deleteAsset, isReady } =
     useHomeMaintenance();
   const isNew = params.id === "new";
 
-  const [asset, setAsset] = useState<Asset | null>(null);
+  // Initialise synchronously so the first paint is already correct: a fresh
+  // asset for "new", or the matching existing asset. This avoids flashing
+  // "Asset not found" before the effect runs.
+  const [asset, setAsset] = useState<Asset | null>(() =>
+    isNew
+      ? createEmptyAsset(activeHome.id)
+      : (activeAssets.find((item) => item.id === params.id) ?? null),
+  );
   const { saved, showSaved } = useSavedHint();
 
   useEffect(() => {
     if (isNew) {
-      setAsset(createEmptyAsset(activeHome.id));
+      setAsset((current) => current ?? createEmptyAsset(activeHome.id));
       return;
     }
 
@@ -36,7 +43,7 @@ export default function AssetEditPage() {
   if (!asset) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-muted">
-        Asset not found.
+        {isReady ? "Asset not found." : "Loading asset…"}
       </div>
     );
   }

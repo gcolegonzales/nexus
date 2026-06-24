@@ -4,7 +4,7 @@ import {
   MICROSOFT_GRAPH_SCOPES,
 } from "@/core/integrations/microsoft/types";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 function getRedirectUri(request: Request): string {
   const url = new URL(request.url);

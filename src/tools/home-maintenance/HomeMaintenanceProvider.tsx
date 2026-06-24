@@ -34,6 +34,7 @@ import {
   loadHomeMaintenance,
   saveHomeMaintenance,
 } from "@/tools/home-maintenance/storage";
+import { createSeedAssets } from "@/tools/home-maintenance/lib/seed-assets";
 import type { Asset } from "@/tools/home-maintenance/types/asset";
 import type { Home } from "@/tools/home-maintenance/types/home";
 import type { HomeMaintenanceState } from "@/tools/home-maintenance/types/state";
@@ -116,9 +117,11 @@ export function HomeMaintenanceProvider({ children }: { children: ReactNode }) {
     async (name: string) => {
       await mutateState((current) => {
         const home = createHome(name);
+        const seededAssets = createSeedAssets(home.id);
         return applyScheduleRegeneration({
           ...current,
           homes: [...current.homes, home],
+          assets: [...current.assets, ...seededAssets],
           activeHomeId: home.id,
         });
       });
@@ -132,7 +135,7 @@ export function HomeMaintenanceProvider({ children }: { children: ReactNode }) {
         const homes = current.homes.map((home) =>
           home.id === homeId ? { ...home, ...patch } : home,
         );
-        let next = ensureHouseAssets({ ...current, homes });
+        const next = ensureHouseAssets({ ...current, homes });
         const regenFields: (keyof Home)[] = ["hvacFilterSize"];
         if (regenFields.some((field) => field in patch)) {
           return applyScheduleRegeneration(next);

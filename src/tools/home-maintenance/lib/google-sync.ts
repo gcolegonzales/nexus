@@ -172,7 +172,18 @@ function createGoogleAdapter(
           );
           return task.calendarEventId;
         } catch {
-          // Fall through to create a new event.
+          // PATCH failed: the event may be stale or already gone. Best-effort
+          // delete it before creating a replacement so we don't leave a
+          // duplicate behind on the calendar.
+          try {
+            await googleFetch(
+              accessToken,
+              `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(task.calendarEventId)}`,
+              { method: "DELETE" },
+            );
+          } catch {
+            // Ignore: the event is likely already deleted.
+          }
         }
       }
 

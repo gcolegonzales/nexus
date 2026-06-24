@@ -191,12 +191,12 @@ export function MeasureLineVisual({
   previewEnd?: { xMm: number; zMm: number; label?: string } | null;
   unitPreference?: UnitPreference;
 }) {
-  if (!start) return null;
-
   const activeEnd = end ?? previewEnd;
 
+  // Hooks must run unconditionally — keep this memo above the early returns and
+  // guard the null-start case inside it.
   const linePoints = useMemo(() => {
-    if (!activeEnd) return null;
+    if (!start || !activeEnd) return null;
     return [
       [start.xMm * MM_TO_M, FLOOR_SURFACE_Y_M + 0.03, start.zMm * MM_TO_M] as [
         number,
@@ -211,6 +211,7 @@ export function MeasureLineVisual({
     ];
   }, [activeEnd, start]);
 
+  if (!start) return null;
   if (!linePoints) return null;
 
   return (

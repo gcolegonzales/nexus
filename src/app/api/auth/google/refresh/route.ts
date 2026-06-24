@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { tokensFromResponse } from "@/core/integrations/google/types";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID;

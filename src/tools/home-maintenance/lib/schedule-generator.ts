@@ -97,8 +97,13 @@ export function generateSchedule(
         ? ({ ...base, ...pickUserEdits(previous) } as Task)
         : base;
 
-      if (template.isEnabled && !template.isEnabled(ctx)) {
-        merged.enabled = false;
+      // For gated templates (e.g. HVAC filter tasks) the gate is authoritative:
+      // `enabled` tracks whether the gate is open. This prevents a task from
+      // being stuck disabled forever after the gate later opens (e.g. once an
+      // HVAC filter size is configured) — the old force-false-only logic let a
+      // preserved `enabled: false` survive regeneration indefinitely.
+      if (template.isEnabled) {
+        merged.enabled = template.isEnabled(ctx);
       }
 
       generated.push(merged);
@@ -139,8 +144,13 @@ export function generateSchedule(
         ? ({ ...base, ...pickUserEdits(previous) } as Task)
         : base;
 
-      if (template.isEnabled && !template.isEnabled(ctx)) {
-        merged.enabled = false;
+      // For gated templates (e.g. HVAC filter tasks) the gate is authoritative:
+      // `enabled` tracks whether the gate is open. This prevents a task from
+      // being stuck disabled forever after the gate later opens (e.g. once an
+      // HVAC filter size is configured) — the old force-false-only logic let a
+      // preserved `enabled: false` survive regeneration indefinitely.
+      if (template.isEnabled) {
+        merged.enabled = template.isEnabled(ctx);
       }
 
       generated.push(merged);

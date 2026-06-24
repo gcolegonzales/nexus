@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { GOOGLE_AUTH_SCOPES } from "@/core/integrations/google/types";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 function getRedirectUri(request: Request): string {
   const url = new URL(request.url);

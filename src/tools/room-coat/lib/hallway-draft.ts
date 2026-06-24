@@ -1190,8 +1190,8 @@ export function normalizeHallwayPath(
     return { points: [...points], links: [...links] };
   }
 
-  let pts = points.map((point) => ({ ...point }));
-  let lks = [...links];
+  const pts = points.map((point) => ({ ...point }));
+  const lks = [...links];
   while (lks.length < pts.length) lks.push(null);
 
   if (pathHasNonAxisAlignedSegment(pts)) {
@@ -1507,7 +1507,7 @@ export function finalizeHallwayPath(
 
   const normalized = normalizeHallwayPath(nextPoints, resolvedLinks);
   nextPoints = normalized.points;
-  let finalLinks = normalized.links;
+  const finalLinks = normalized.links;
 
   if (finalLinks[0]) {
     finalLinks[0] = syncLinkToCenterline(
@@ -2067,7 +2067,7 @@ export function draftDisplayPath(
   if (draft.points.length === 0) return [];
 
   let points = [...draft.points];
-  let links = [...draft.links];
+  const links = [...draft.links];
   while (links.length < points.length) links.push(null);
 
   const extending = isCollinearExtensionPreview(draft);
@@ -2230,8 +2230,8 @@ export function prepareHallwayForCreate(
 ): { points: HallwayWaypoint[]; links: Array<WallLink | null> } | null {
   if (!canCompleteHallwayDraft(rooms, hallways, draft)) return null;
 
-  let points = [...draft.points];
-  let links = [...draft.links];
+  const points = [...draft.points];
+  const links = [...draft.links];
   while (links.length < points.length) links.push(null);
 
   if (draft.phase === "placing-end" && draft.wallPlacement) {

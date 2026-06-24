@@ -4,7 +4,7 @@ import {
   tokensFromMicrosoftResponse,
 } from "@/core/integrations/microsoft/types";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const clientId = process.env.MICROSOFT_CLIENT_ID;

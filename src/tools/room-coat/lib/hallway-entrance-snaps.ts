@@ -8,6 +8,7 @@ import {
 import {
   centerlinePointFromHallwayLink,
   createWallPlacementFromHallwayHit,
+  getHallwayWallLayout,
   type EndpointWallHit,
 } from "@/tools/room-coat/lib/hallway-wall-hit";
 import type { SnapGuideSegment } from "@/tools/room-coat/lib/snap-guides";
@@ -406,21 +407,35 @@ function buildEntranceLineSnap(
   target: HallwayEntranceTarget,
   anchor: HallwayWaypoint,
   rooms: PlacedRoom[],
+  hallways: Hallway[],
 ): HallwayEntranceLineSnap {
-  const roomLink = isRoomWallLink(target.link) ? target.link : null;
+  const link = target.link;
+  const roomLink = isRoomWallLink(link) ? link : null;
   const room = roomLink
     ? rooms.find((item) => item.placementId === roomLink.placementId)
     : null;
-  const lockAxis: "x" | "z" =
-    room && roomLink
-      ? linkApproachAxis(room, roomLink.wallIndex) === "z"
-        ? "x"
-        : "z"
-      : roomLink
+
+  let lockAxis: "x" | "z";
+  if (room && roomLink) {
+    lockAxis = linkApproachAxis(room, roomLink.wallIndex) === "z" ? "x" : "z";
+  } else if (isHallwayWallLink(link)) {
+    // Derive the lock axis from the hallway wall's actual orientation. The old
+    // fallback used the anchor's world-coordinate magnitudes, which is wrong
+    // for any wall not centered on the origin.
+    const hallway = hallways.find((item) => item.id === link.hallwayId);
+    const layout = hallway
+      ? getHallwayWallLayout(hallway, link.segIndex, link.side)
+      : undefined;
+    lockAxis = layout
+      ? Math.abs(layout.normalX) >= Math.abs(layout.normalZ)
         ? "z"
-        : Math.abs(anchor.xMm) >= Math.abs(anchor.zMm)
-          ? "z"
-          : "x";
+        : "x"
+      : Math.abs(anchor.xMm) >= Math.abs(anchor.zMm)
+        ? "z"
+        : "x";
+  } else {
+    lockAxis = Math.abs(anchor.xMm) >= Math.abs(anchor.zMm) ? "z" : "x";
+  }
 
   return {
     targetId: target.id,
@@ -546,7 +561,7 @@ function resolveBestDrawLineSnap(input: {
   for (const target of entranceTargets) {
     const anchor = anchorForTarget(rooms, hallways, target, approachFrom);
     if (!anchor) continue;
-    const stickyLine = buildEntranceLineSnap(target, anchor, rooms);
+    const stickyLine = buildEntranceLineSnap(target, anchor, rooms, hallways);
     const metrics = lineMetrics(anchor, stickyLine.lockAxis, pointerXMm, pointerZMm);
     if (metrics.perpendicularMm > ENTRANCE_LINE_ENGAGE_MM) continue;
     const guide = entranceCenterlineGuide(rooms, hallways, target, approachFrom);

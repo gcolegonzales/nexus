@@ -5,8 +5,8 @@ import {
 
 export function getAssetLabel(asset: Asset): string {
   return (
-    asset.nickname ??
-    [asset.brand, asset.model].filter(Boolean).join(" ") ??
+    asset.nickname ||
+    [asset.brand, asset.model].filter(Boolean).join(" ") ||
     ASSET_CATEGORY_LABELS[asset.category]
   );
 }

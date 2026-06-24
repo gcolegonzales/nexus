@@ -4,7 +4,10 @@ import {
   type GoogleTokenResponse,
 } from "@/core/integrations/google/types";
 
-export const dynamic = "force-static";
+// Must run at request time to read the provider's `?code=` query param.
+// (force-static strips the query string, which broke the OAuth handshake.)
+// OAuth requires a server deployment; it cannot function under static export.
+export const dynamic = "force-dynamic";
 
 function getRedirectUri(request: Request): string {
   const url = new URL(request.url);

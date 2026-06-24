@@ -80,10 +80,22 @@ export function unitBounds(rooms: PlacedRoom[]): {
   let maxZ = -Infinity;
 
   for (const room of rooms) {
-    minX = Math.min(minX, room.originXMm - room.widthMm / 2);
-    maxX = Math.max(maxX, room.originXMm + room.widthMm / 2);
-    minZ = Math.min(minZ, room.originZMm - room.lengthMm / 2);
-    maxZ = Math.max(maxZ, room.originZMm + room.lengthMm / 2);
+    // Use the real polygon vertices so bounds stay correct for non-rectangular
+    // rooms and after any resize that leaves widthMm/lengthMm stale. Fall back
+    // to origin +/- half-size only when a placement has no vertices.
+    if (room.verticesMm && room.verticesMm.length > 0) {
+      for (const vertex of room.verticesMm) {
+        minX = Math.min(minX, vertex.xMm);
+        maxX = Math.max(maxX, vertex.xMm);
+        minZ = Math.min(minZ, vertex.zMm);
+        maxZ = Math.max(maxZ, vertex.zMm);
+      }
+    } else {
+      minX = Math.min(minX, room.originXMm - room.widthMm / 2);
+      maxX = Math.max(maxX, room.originXMm + room.widthMm / 2);
+      minZ = Math.min(minZ, room.originZMm - room.lengthMm / 2);
+      maxZ = Math.max(maxZ, room.originZMm + room.lengthMm / 2);
+    }
   }
 
   return { minX, maxX, minZ, maxZ };

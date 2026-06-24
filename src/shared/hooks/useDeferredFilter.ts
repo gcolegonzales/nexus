@@ -13,6 +13,10 @@ export function useDeferredFilter<T>(
   useEffect(() => {
     if (filterKey === committedKeyRef.current) {
       setDeferredValue(value);
+      // Resolve any in-flight pending state when the key reverts to the
+      // committed one before the debounce timer fires; otherwise isPending
+      // would stay stuck true forever.
+      setIsPending(false);
       return;
     }
 

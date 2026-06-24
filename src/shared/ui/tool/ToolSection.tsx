@@ -24,17 +24,17 @@ export function ToolSection({
   children,
 }: ToolSectionProps) {
   const widthClass = widthClasses[maxWidth];
-  const hasHeader = Boolean(title || description || action);
 
   return (
     <div className={widthClass ? `mx-auto ${widthClass}` : undefined}>
-      {hasHeader && (
-        <ToolSectionHeader
-          title={title}
-          description={description}
-          action={action}
-        />
-      )}
+      {/* Always render the header: it self-hides when empty but is also where
+          shell-level headerActions (from ToolShellContext) surface, so gating
+          on local props alone would silently drop those actions. */}
+      <ToolSectionHeader
+        title={title}
+        description={description}
+        action={action}
+      />
       <StaggerItem>{children}</StaggerItem>
     </div>
   );

@@ -5,7 +5,8 @@ import {
   type MicrosoftTokenResponse,
 } from "@/core/integrations/microsoft/types";
 
-export const dynamic = "force-static";
+// Must run at request time to read the provider's `?code=` query param.
+export const dynamic = "force-dynamic";
 
 function getRedirectUri(request: Request): string {
   const url = new URL(request.url);

@@ -315,6 +315,13 @@ function stripPaintReferences(
           ([, id]) => id !== paintId,
         ),
       ),
+      // Doors added to a placement (v9+) live here, not on the catalog room, so
+      // their paint overrides must be stripped too.
+      doors: placement.doors?.map((door) => ({
+        ...door,
+        overridePaintId:
+          door.overridePaintId === paintId ? null : door.overridePaintId,
+      })),
     })),
     rooms: state.rooms.map((room) => ({
       ...room,
@@ -869,20 +876,38 @@ export function RoomCoatProvider({ children }: { children: ReactNode }) {
   const moveRoom = useCallback(
     async (placementId: string, originXMm: number, originZMm: number) => {
       pushUndoSnapshot();
-      await mutate((current) => ({
-        ...current,
-        placements: current.placements.map((placement) => {
-          if (placement.id !== placementId) return placement;
-          const dx = originXMm - placement.originXMm;
-          const dz = originZMm - placement.originZMm;
-          return {
-            ...placement,
-            originXMm,
-            originZMm,
-            verticesMm: translateVertices(placement.verticesMm ?? [], dx, dz),
-          };
-        }),
-      }));
+      await mutate((current) => {
+        const target = current.placements.find(
+          (placement) => placement.id === placementId,
+        );
+        if (!target) return current;
+        const dx = originXMm - target.originXMm;
+        const dz = originZMm - target.originZMm;
+        return {
+          ...current,
+          placements: current.placements.map((placement) =>
+            placement.id !== placementId
+              ? placement
+              : {
+                  ...placement,
+                  originXMm,
+                  originZMm,
+                  verticesMm: translateVertices(
+                    placement.verticesMm ?? [],
+                    dx,
+                    dz,
+                  ),
+                },
+          ),
+          // Snap points anchored to this room store absolute world coords, so
+          // they must travel with the room when it moves.
+          snapPoints: current.snapPoints.map((point) =>
+            point.roomPlacementId === placementId
+              ? { ...point, xMm: point.xMm + dx, zMm: point.zMm + dz }
+              : point,
+          ),
+        };
+      });
     },
     [mutate, pushUndoSnapshot],
   );
@@ -1175,7 +1200,7 @@ export function RoomCoatProvider({ children }: { children: ReactNode }) {
 
         if (
           isWallSnapPoint(nextPoint) &&
-          nextPoint.wallIndex &&
+          nextPoint.wallIndex !== undefined &&
           nextPoint.wallOffsetMm !== undefined
         ) {
           const room = rooms.find(
@@ -1743,6 +1768,7 @@ export function RoomCoatProvider({ children }: { children: ReactNode }) {
 
   const removeWallOpening = useCallback(
     async (placementId: string, openingId: string) => {
+      pushUndoSnapshot();
       await mutate((current) => ({
         ...current,
         placements: current.placements.map((placement) => {
@@ -1756,7 +1782,7 @@ export function RoomCoatProvider({ children }: { children: ReactNode }) {
         }),
       }));
     },
-    [mutate],
+    [mutate, pushUndoSnapshot],
   );
 
   const deleteHallway = useCallback(

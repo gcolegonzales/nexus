@@ -545,11 +545,13 @@ function EndpointPlacementHandles({
   const hallway = isHallwayWallLink(link)
     ? (hallways.find((item) => item.id === link.hallwayId) ?? null)
     : null;
-  if (!room && !hallway) return null;
 
-  const span = placementOpeningSpan(room, hallways, placement);
   const heightMm = room?.heightMm ?? hallway?.heightMm ?? 2438;
   const y = heightMm * MM_TO_M * 0.55 + HANDLE_LIFT_M;
+
+  // All hooks must run unconditionally (Rules of Hooks), so they are hoisted
+  // above the early returns below and guarded against the null room/hallway
+  // case. The early returns then discard the unused computed values.
   const beginFloorDrag = useFloorPointerDrag(
     disableOrbit,
     enableOrbit,
@@ -560,6 +562,25 @@ function EndpointPlacementHandles({
     () => collectHallwayEntranceTargets(rooms, hallways, snapPoints),
     [rooms, hallways, snapPoints],
   );
+  const { point: centerlineStart } = useMemo(
+    () =>
+      room || hallway
+        ? commitWallPlacementPoint(room, hallways, placement)
+        : { point: { xMm: 0, zMm: 0 } },
+    [room, hallway, hallways, placement],
+  );
+  const pullHandlePos = useMemo((): [number, number, number] => {
+    const out = outwardOffset(room, placement, 520);
+    return [
+      (centerlineStart.xMm + out.xMm) * MM_TO_M,
+      y + 0.08,
+      (centerlineStart.zMm + out.zMm) * MM_TO_M,
+    ];
+  }, [centerlineStart, placement, room, y]);
+
+  if (!room && !hallway) return null;
+
+  const span = placementOpeningSpan(room, hallways, placement);
 
   function snapCenterPlacement(next: WallPlacement, offsetMm: number): WallPlacement {
     return snapWallPlacementToEntrance(
@@ -596,20 +617,6 @@ function EndpointPlacementHandles({
         link.offsetMm,
       );
   if (!left || !right || !center) return null;
-
-  const { point: centerlineStart } = useMemo(
-    () => commitWallPlacementPoint(room, hallways, placement),
-    [room, hallways, placement],
-  );
-
-  const pullHandlePos = useMemo((): [number, number, number] => {
-    const out = outwardOffset(room, placement, 520);
-    return [
-      (centerlineStart.xMm + out.xMm) * MM_TO_M,
-      y + 0.08,
-      (centerlineStart.zMm + out.zMm) * MM_TO_M,
-    ];
-  }, [centerlineStart, placement, room, y]);
 
   function startWallDrag(
     kind: DragKind,

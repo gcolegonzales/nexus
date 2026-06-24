@@ -9,9 +9,9 @@ export function normalizeCompletion(
 ): TaskCompletion | undefined {
   if (!value) return undefined;
   if (typeof value === "string") {
-    return { at: value };
+    return value.length > 0 ? { at: value } : undefined;
   }
-  if (typeof value.at === "string") {
+  if (typeof value.at === "string" && value.at.length > 0) {
     return value;
   }
   return undefined;

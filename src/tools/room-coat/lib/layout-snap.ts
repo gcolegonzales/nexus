@@ -281,25 +281,27 @@ export function collectSnapCandidates(input: SnapResolveInput): SnapCandidate[] 
     );
   }
 
-  for (const point of snapPoints) {
-    const insetMm = Math.max(size.depthMm / 2, 200);
-    const world = isWallSnapPoint(point)
-      ? furnishSnapWorldMm(point, rooms, insetMm)
-      : snapPointWorldMm(point, rooms);
-    pushCandidate(
-      candidates,
-      {
-        xMm: world.xMm,
-        zMm: world.zMm,
-        rotationDeg: point.rotationDeg ?? rotationDeg,
-        source: {
-          kind: "snap-point",
-          label: point.label ?? "Snap point",
+  if (allowGeometry(snapMode)) {
+    for (const point of snapPoints) {
+      const insetMm = Math.max(size.depthMm / 2, 200);
+      const world = isWallSnapPoint(point)
+        ? furnishSnapWorldMm(point, rooms, insetMm)
+        : snapPointWorldMm(point, rooms);
+      pushCandidate(
+        candidates,
+        {
+          xMm: world.xMm,
+          zMm: world.zMm,
+          rotationDeg: point.rotationDeg ?? rotationDeg,
+          source: {
+            kind: "snap-point",
+            label: point.label ?? "Snap point",
+          },
         },
-      },
-      xMm,
-      zMm,
-    );
+        xMm,
+        zMm,
+      );
+    }
   }
 
   if (allowGeometry(snapMode)) {

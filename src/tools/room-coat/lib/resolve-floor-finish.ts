@@ -84,7 +84,9 @@ export function resolveFloorFinishForSpace(
   return buildResolved(
     fallback.type,
     fallback.variantId,
-    unitDefaultCoat ? "unit-default" : "default",
+    // Only attribute the finish to the unit default when the unit default coat
+    // actually specifies one; otherwise this is a generic default.
+    unitDefaultCoat?.floorFinishType ? "unit-default" : "default",
   );
 }
 
