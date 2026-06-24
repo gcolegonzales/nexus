@@ -87,6 +87,7 @@ function UnitEditorBody() {
     deleteHallway,
     updatePlacedRoomDimensions,
     setShowCeilings,
+    setShowFloorGrid,
     setActiveFloorId,
     addFloor,
     removeSnapPoint,
@@ -942,6 +943,8 @@ function UnitEditorBody() {
           onToolChange={setTool}
           showCeilings={state.viewSettings.showCeilings}
           onShowCeilingsChange={(show) => void setShowCeilings(show)}
+          showFloorGrid={state.viewSettings.showFloorGrid}
+          onShowFloorGridChange={(show) => void setShowFloorGrid(show)}
           onAddFloor={() => void addFloor()}
         >
           {contextualPanel}

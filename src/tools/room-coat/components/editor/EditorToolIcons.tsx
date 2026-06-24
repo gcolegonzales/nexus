@@ -85,6 +85,15 @@ export function CeilingsIcon({ className = iconClass }: { className?: string }) 
   );
 }
 
+export function GridIcon({ className = iconClass }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+      <rect x="3" y="3" width="18" height="18" rx="1" />
+      <path d="M3 9h18M3 15h18M9 3v18M15 3v18" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function SettingsIcon() {
   return (
     <svg className={iconClass} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>

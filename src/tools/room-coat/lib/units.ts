@@ -16,11 +16,14 @@ export interface MetricDisplay {
 
 export function mmToImperial(mm: number): ImperialDisplay {
   const totalInches = mm / MM_PER_INCH;
-  const feet = Math.floor(totalInches / 12);
-  // Keep 0.01" resolution (~0.25 mm) so the mm -> imperial -> mm round-trip in
-  // dimension inputs is effectively lossless. formatMm() rounds to 0.1" purely
-  // for display.
-  const inches = Math.round((totalInches - feet * 12) * 100) / 100;
+  let feet = Math.floor(totalInches / 12);
+  let inches = Math.round((totalInches - feet * 12) * 10) / 10;
+  // Carry rounded inches up to the next foot: 2438 mm is 7' 11.98", which
+  // rounds to 7' 12" — display that as 8' 0", never "7' 12".
+  if (inches >= 12) {
+    feet += 1;
+    inches -= 12;
+  }
   return { feet, inches };
 }
 
@@ -30,8 +33,13 @@ export function imperialToMm(feet: number, inches: number): number {
 
 export function mmToMetric(mm: number): MetricDisplay {
   const totalCm = mm / 10;
-  const meters = Math.floor(totalCm / 100);
-  const centimeters = Math.round((totalCm - meters * 100) * 10) / 10;
+  let meters = Math.floor(totalCm / 100);
+  let centimeters = Math.round((totalCm - meters * 100) * 10) / 10;
+  // Carry rounded centimetres up to the next metre (avoid "1 m 100 cm").
+  if (centimeters >= 100) {
+    meters += 1;
+    centimeters -= 100;
+  }
   return { meters, centimeters };
 }
 
@@ -51,14 +59,13 @@ export function formatMm(mm: number, unit: UnitPreference): string {
     return `${meters} m ${centimeters} cm`;
   }
   const { feet, inches } = mmToImperial(mm);
-  const displayInches = Math.round(inches * 10) / 10;
   if (feet === 0) {
-    return `${displayInches}"`;
+    return `${inches}"`;
   }
-  if (displayInches === 0) {
+  if (inches === 0) {
     return `${feet}'`;
   }
-  return `${feet}' ${displayInches}"`;
+  return `${feet}' ${inches}"`;
 }
 
 export function unitLabel(unit: UnitPreference): string {

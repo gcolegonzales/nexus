@@ -13,6 +13,7 @@ import {
   CeilingsIcon,
   EDITOR_TOOLBAR_ICON_CLASS,
   EditorToolIcon,
+  GridIcon,
 } from "@/tools/room-coat/components/editor/EditorToolIcons";
 
 interface EditorToolbarProps {
@@ -20,6 +21,8 @@ interface EditorToolbarProps {
   onToolChange: (tool: EditorTool) => void;
   showCeilings: boolean;
   onShowCeilingsChange: (show: boolean) => void;
+  showFloorGrid: boolean;
+  onShowFloorGridChange: (show: boolean) => void;
   onAddFloor: () => void;
   children?: ReactNode;
 }
@@ -29,6 +32,8 @@ export function EditorToolbar({
   onToolChange,
   showCeilings,
   onShowCeilingsChange,
+  showFloorGrid,
+  onShowFloorGridChange,
   onAddFloor,
   children,
 }: EditorToolbarProps) {
@@ -41,6 +46,7 @@ export function EditorToolbar({
         className={`pointer-events-auto w-fit max-w-[min(100%,760px)] overflow-x-auto rounded-lg [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${EDITOR_CHROME}`}
       >
         <div className="inline-flex shrink-0 items-end gap-px px-1 py-1">
+          {/* Tools group — selection/editing actions plus the Add menu. */}
           {EDITOR_TOOLS.map(({ id, label, shortLabel }) => (
             <EditorIconButton
               key={id}
@@ -53,8 +59,6 @@ export function EditorToolbar({
             </EditorIconButton>
           ))}
 
-          <div className="mx-0.5 mb-1.5 h-12 w-px shrink-0 self-end bg-zinc-500/40" aria-hidden />
-
           <EditorAddMenu
             activeTool={tool}
             onSelectTool={onToolChange}
@@ -63,6 +67,7 @@ export function EditorToolbar({
 
           <div className="mx-0.5 mb-1.5 h-12 w-px shrink-0 self-end bg-zinc-500/40" aria-hidden />
 
+          {/* View group — quick toggles for what the 3D scene renders. */}
           <EditorIconButton
             label={showCeilings ? "Hide ceilings" : "Show ceilings"}
             caption="Ceilings"
@@ -70,6 +75,15 @@ export function EditorToolbar({
             onClick={() => onShowCeilingsChange(!showCeilings)}
           >
             <CeilingsIcon className={EDITOR_TOOLBAR_ICON_CLASS} />
+          </EditorIconButton>
+
+          <EditorIconButton
+            label={showFloorGrid ? "Hide floor grid" : "Show floor grid"}
+            caption="Grid"
+            active={showFloorGrid}
+            onClick={() => onShowFloorGridChange(!showFloorGrid)}
+          >
+            <GridIcon className={EDITOR_TOOLBAR_ICON_CLASS} />
           </EditorIconButton>
         </div>
 
