@@ -629,6 +629,9 @@ export function RoomCoatProvider({ children }: { children: ReactNode }) {
         if (!current.floors.some((floor) => floor.id === floorId)) return current;
         return { ...current, activeFloorId: floorId };
       });
+      // Clear the selected surface — it belongs to the floor we just left and
+      // is no longer visible (matches setActiveUnitId's behavior).
+      setSelectedSurfaceId(null);
     },
     [mutate],
   );
