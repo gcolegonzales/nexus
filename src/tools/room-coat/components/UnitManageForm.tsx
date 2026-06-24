@@ -5,7 +5,7 @@ import { useRoomCoat } from "@/tools/room-coat/RoomCoatProvider";
 import type { HomeUnit } from "@/tools/room-coat/types/state";
 import { Button } from "@nexus/next";
 import { FormActions } from "@nexus/next";
-import { Input, useToast } from "@nexus/ui";
+import { Input, useConfirm, useToast } from "@nexus/ui";
 
 interface UnitManageFormProps {
   unit: HomeUnit;
@@ -15,6 +15,7 @@ interface UnitManageFormProps {
 export function UnitManageForm({ unit, onClose }: UnitManageFormProps) {
   const { state, updateUnit, deleteUnit } = useRoomCoat();
   const toast = useToast();
+  const confirm = useConfirm();
   const [draftName, setDraftName] = useState(unit.name);
 
   useEffect(() => {
@@ -29,9 +30,12 @@ export function UnitManageForm({ unit, onClose }: UnitManageFormProps) {
   async function handleDelete() {
     if (state.units.length <= 1) return;
 
-    const confirmed = window.confirm(
-      `Delete ${draftName} and remove its room layout and hallways? Room definitions stay in your catalog.`,
-    );
+    const confirmed = await confirm({
+      title: "Delete unit?",
+      message: `Delete ${draftName} and remove its room layout and hallways? Room definitions stay in your catalog.`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
     if (!confirmed) return;
 
     await deleteUnit(unit.id);

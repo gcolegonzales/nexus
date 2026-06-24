@@ -15,9 +15,11 @@ import { PageHeader } from "@nexus/ui";
 import { PageTransition } from "@nexus/next";
 import { ThemeSelector } from "@nexus/ui";
 import { StaggerItem } from "@nexus/ui";
+import { useConfirm } from "@nexus/ui";
 
 export function SettingsPanel() {
   const { refreshProfile } = useHubProfile();
+  const confirm = useConfirm();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +54,13 @@ export function SettingsPanel() {
         throw new Error("Invalid Nexus export file.");
       }
 
-      const confirmed = window.confirm(
-        "Import will replace your local Nexus data on this device. Continue?",
-      );
+      const confirmed = await confirm({
+        title: "Replace local data?",
+        message:
+          "Import will replace your local Nexus data on this device. Continue?",
+        confirmLabel: "Import",
+        destructive: true,
+      });
       if (!confirmed) return;
 
       await importExportBundle(parsed);

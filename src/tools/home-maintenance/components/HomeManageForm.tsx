@@ -8,6 +8,7 @@ import { Button } from "@nexus/next";
 import { FormActions } from "@nexus/next";
 import { Input, Textarea } from "@nexus/ui";
 import { Badge } from "@nexus/ui";
+import { useConfirm } from "@nexus/ui";
 
 interface HomeManageFormProps {
   home: Home;
@@ -16,6 +17,7 @@ interface HomeManageFormProps {
 
 export function HomeManageForm({ home, onClose }: HomeManageFormProps) {
   const { state, updateHome, deleteHome } = useHomeMaintenance();
+  const confirm = useConfirm();
   const [draft, setDraft] = useState<Home>(home);
   const { saved, showSaved } = useSavedHint();
 
@@ -36,9 +38,12 @@ export function HomeManageForm({ home, onClose }: HomeManageFormProps) {
   async function handleDelete() {
     if (state.homes.length <= 1) return;
 
-    const confirmed = window.confirm(
-      `Delete ${draft.name} and all of its assets, tasks, and calendar links?`,
-    );
+    const confirmed = await confirm({
+      title: "Delete home?",
+      message: `Delete ${draft.name} and all of its assets, tasks, and calendar links?`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
     if (!confirmed) return;
 
     await deleteHome(draft.id);

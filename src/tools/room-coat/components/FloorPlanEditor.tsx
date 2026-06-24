@@ -20,7 +20,7 @@ import type {
   WallOpening,
   WallSide,
 } from "@/tools/room-coat/types/state";
-import { Badge, Card } from "@nexus/ui";
+import { Badge, Card, useConfirm } from "@nexus/ui";
 import { Button } from "@nexus/next";
 
 const PX_PER_MM = 0.04;
@@ -65,6 +65,7 @@ export function FloorPlanEditor() {
     deleteHallway,
     getAvailableRoomsForUnit,
   } = useRoomCoat();
+  const confirm = useConfirm();
 
   const rooms = activePlacedRooms;
   const hallways = activeHallways;
@@ -575,8 +576,15 @@ export function FloorPlanEditor() {
                 <Button
                   variant="ghost"
                   className="!px-2 !py-0.5 text-xs"
-                  onClick={() => {
-                    if (confirm(`Remove ${room.name} from this unit?`)) {
+                  onClick={async () => {
+                    if (
+                      await confirm({
+                        title: "Remove room?",
+                        message: `Remove ${room.name} from this unit?`,
+                        confirmLabel: "Remove",
+                        destructive: true,
+                      })
+                    ) {
                       void detachRoomFromUnit(room.placementId);
                     }
                   }}
@@ -821,8 +829,15 @@ export function FloorPlanEditor() {
               </span>
               <Button
                 variant="ghost"
-                onClick={() => {
-                  if (confirm(`Remove ${hallway.name}?`)) {
+                onClick={async () => {
+                  if (
+                    await confirm({
+                      title: "Remove hallway?",
+                      message: `Remove ${hallway.name}?`,
+                      confirmLabel: "Remove",
+                      destructive: true,
+                    })
+                  ) {
                     void deleteHallway(hallway.id);
                   }
                 }}

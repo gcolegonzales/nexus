@@ -12,6 +12,7 @@ import {
   accordionHeaderTitleClassName,
   Badge,
   Input,
+  useConfirm,
   useToast,
 } from "@nexus/ui";
 import { Button, FormActions } from "@nexus/next";
@@ -42,6 +43,7 @@ export function RoomCatalogCard({
 }: RoomCatalogCardProps) {
   const { updateRoom, deleteRoom } = useRoomCoat();
   const toast = useToast();
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<RoomDraft>(() => draftFromRoom(room));
@@ -242,12 +244,14 @@ export function RoomCatalogCard({
             </Button>
             <Button
               variant="danger"
-              onClick={() => {
-                if (
-                  confirm(
-                    `Delete "${room.name}" from the catalog? It will be removed from all units.`,
-                  )
-                ) {
+              onClick={async () => {
+                const confirmed = await confirm({
+                  title: "Delete room?",
+                  message: `Delete "${room.name}" from the catalog? It will be removed from all units.`,
+                  confirmLabel: "Delete",
+                  destructive: true,
+                });
+                if (confirmed) {
                   void deleteRoom(room.id);
                   toast.success("Room deleted");
                 }

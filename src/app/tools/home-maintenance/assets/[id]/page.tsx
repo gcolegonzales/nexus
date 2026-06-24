@@ -11,13 +11,14 @@ import { useSavedHint } from "@/shared/hooks/useSavedHint";
 import { AssetForm } from "@/tools/home-maintenance/components/AssetForm";
 import type { Asset } from "@/tools/home-maintenance/types/asset";
 import { Button, FormActions } from "@nexus/next";
-import { Badge, Card, StaggerItem } from "@nexus/ui";
+import { Badge, Card, StaggerItem, useConfirm } from "@nexus/ui";
 
 export default function AssetEditPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { activeHome, activeAssets, upsertAsset, deleteAsset, isReady } =
     useHomeMaintenance();
+  const confirm = useConfirm();
   const isNew = params.id === "new";
 
   // Initialise synchronously so the first paint is already correct: a fresh
@@ -59,7 +60,12 @@ export default function AssetEditPage() {
 
   async function handleDelete() {
     if (!asset) return;
-    const confirmed = window.confirm("Delete this asset and its linked tasks?");
+    const confirmed = await confirm({
+      title: "Delete asset?",
+      message: "Delete this asset and its linked tasks?",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
     if (!confirmed) return;
     await deleteAsset(asset.id);
     router.push("/tools/home-maintenance/assets");

@@ -11,7 +11,7 @@ import {
   type SortableColumn,
 } from "@/tools/room-coat/components/SortableTable";
 import type { Paint } from "@/tools/room-coat/types/state";
-import { Badge, Card, Modal, useToast } from "@nexus/ui";
+import { Badge, Card, Modal, useConfirm, useToast } from "@nexus/ui";
 import { Button, PrimaryButton } from "@nexus/next";
 
 const STARTER_SWATCHES = [
@@ -40,6 +40,7 @@ interface PaintLibraryProps {
 export function PaintLibrary({ unitName }: PaintLibraryProps) {
   const { activePaints, upsertPaint, deletePaint } = useRoomCoat();
   const toast = useToast();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState<Paint | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [loadingStarter, setLoadingStarter] = useState(false);
@@ -63,7 +64,13 @@ export function PaintLibrary({ unitName }: PaintLibraryProps) {
   }
 
   async function handleDelete(paint: Paint) {
-    if (!confirm(`Delete ${formatPaintLabel(paint)}?`)) return;
+    const confirmed = await confirm({
+      title: "Delete paint?",
+      message: `Delete ${formatPaintLabel(paint)}?`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!confirmed) return;
     await deletePaint(paint.id);
     toast.success("Paint deleted");
   }

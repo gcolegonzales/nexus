@@ -2,13 +2,15 @@
 
 import type { ReactNode } from "react";
 import { ProfileProvider } from "@/core/profile/ProfileProvider";
-import { ThemeProvider, ToastProvider } from "@nexus/ui";
+import { ConfirmProvider, ThemeProvider, ToastProvider } from "@nexus/ui";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <ProfileProvider>{children}</ProfileProvider>
+        <ProfileProvider>
+          <ConfirmProvider>{children}</ConfirmProvider>
+        </ProfileProvider>
       </ToastProvider>
     </ThemeProvider>
   );
