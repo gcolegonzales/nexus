@@ -2,7 +2,7 @@
 id: FEAT-pet-health-1
 title: Tool registration & pets registry
 epic: pet-health
-status: ready
+status: done
 depends_on: [FEAT-hub-shell-1, FEAT-hub-shell-4, FEAT-hub-shell-5]
 ---
 

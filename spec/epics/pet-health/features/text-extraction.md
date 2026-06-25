@@ -2,7 +2,7 @@
 id: FEAT-pet-health-3
 title: In-browser text extraction
 epic: pet-health
-status: ready
+status: done
 depends_on: [FEAT-pet-health-2]
 ---
 

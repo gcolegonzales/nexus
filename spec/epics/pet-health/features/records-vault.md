@@ -2,7 +2,7 @@
 id: FEAT-pet-health-2
 title: Medical records & document vault
 epic: pet-health
-status: ready
+status: done
 depends_on: [FEAT-pet-health-1]
 ---
 

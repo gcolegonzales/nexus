@@ -2,7 +2,7 @@
 id: FEAT-pet-health-6
 title: Durable local storage — own folder & full archive
 epic: pet-health
-status: ready
+status: done
 depends_on: [FEAT-pet-health-2]
 ---
 

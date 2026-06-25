@@ -2,7 +2,7 @@
 id: FEAT-pet-health-5
 title: Pet AI chat with record context
 epic: pet-health
-status: ready
+status: done
 depends_on: [FEAT-pet-health-1, FEAT-pet-health-3, FEAT-pet-health-4]
 ---
 

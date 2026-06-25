@@ -2,7 +2,7 @@
 id: FEAT-pet-health-4
 title: AI provider settings (bring-your-own-key)
 epic: pet-health
-status: ready
+status: done
 depends_on: [FEAT-pet-health-1]
 ---
 
