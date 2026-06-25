@@ -16,6 +16,7 @@ import { PageTransition } from "@nexus/next";
 import { ThemeSelector } from "@nexus/ui";
 import { StaggerItem } from "@nexus/ui";
 import { useConfirm } from "@nexus/ui";
+import { AiSettings } from "./AiSettings";
 
 export function SettingsPanel() {
   const { refreshProfile } = useHubProfile();
@@ -95,6 +96,20 @@ export function SettingsPanel() {
                 </p>
               </div>
               <ThemeSelector />
+            </Card>
+          </StaggerItem>
+
+          <StaggerItem>
+            <Card className="space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold text-text">AI Provider</h2>
+                <p className="text-sm text-muted">
+                  Bring your own API key to enable AI features across Nexus.
+                  Your key is stored only on this device and never included in
+                  data exports.
+                </p>
+              </div>
+              <AiSettings />
             </Card>
           </StaggerItem>
 
