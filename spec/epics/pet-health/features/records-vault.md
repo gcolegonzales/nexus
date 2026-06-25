@@ -2,8 +2,8 @@
 id: FEAT-pet-health-2
 title: Medical records & document vault
 epic: pet-health
-status: done
-depends_on: [FEAT-pet-health-1]
+status: ready
+depends_on: [FEAT-pet-health-1, FEAT-hub-shell-10]
 ---
 
 ## Summary
@@ -30,9 +30,11 @@ slice stays serializable; the slice holds record metadata plus a reference to th
 - [ ] The original file bytes are stored in IndexedDB under a per-file key (e.g.
       `tool:pet-health:file:{fileRef}`) as a Blob; the `tool:pet-health` state slice stores only the
       record metadata and `fileRef`, keeping the slice JSON-serializable.
-- [ ] Records are listed under their pet (most recent first by `documentDate` then `uploadedAt`),
-      showing title, type, date, and size; users can open/preview, download the original, edit
-      metadata, and delete a record.
+- [ ] Records are listed under their pet using the shared `DataTable` (`FEAT-hub-shell-10`), most
+      recent first by `documentDate` then `uploadedAt`, with sortable columns for title, type, date,
+      size, and extraction status (status badge per `FEAT-pet-health-3`); a row actions cell lets the
+      user open/preview, download the original, edit metadata, re-extract, and delete a record. The
+      empty state ("No Records yet…") is the table's empty state.
 - [ ] Deleting a record removes both its metadata from the slice and its stored file Blob; deleting a
       pet (`FEAT-pet-health-1`) cascades to delete all of that pet's records and their file Blobs.
 - [ ] Extracted text for a record (produced by `FEAT-pet-health-3`) is stored on the record and is
@@ -46,13 +48,13 @@ slice stays serializable; the slice holds record metadata plus a reference to th
 
 ## Affected areas
 - `src/tools/pet-health/types/*`, `src/tools/pet-health/storage/*` (slice + per-file Blob store),
-  `src/tools/pet-health/PetHealthProvider.tsx`, `src/app/tools/pet-health/**` (records UI),
-  `src/shared/download/downloadBlob.ts` (download original).
+  `src/tools/pet-health/PetHealthProvider.tsx`, `src/app/tools/pet-health/**` (records UI now built on
+  the shared `DataTable`), `src/shared/download/downloadBlob.ts` (download original).
 
 ## Dependencies
-- Pets registry (`FEAT-pet-health-1`).
+- Pets registry (`FEAT-pet-health-1`); shared `DataTable` (`FEAT-hub-shell-10`).
 
 ## Open questions
-- None. (Resolved during planning: the durable "forever" copy of raw files is the user's connected
-  document folder / full archive (`FEAT-pet-health-6`); the hub JSON export (`FEAT-hub-shell-6`)
-  carries record metadata + extracted text only and does **not** base64 the binaries.)
+- None. (The durable "forever" copy of raw files is the manual archive export (`FEAT-pet-health-6`);
+  the hub JSON export (`FEAT-hub-shell-6`) carries record metadata + extracted text only, not the
+  binaries.)

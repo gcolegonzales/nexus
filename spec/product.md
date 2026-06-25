@@ -100,6 +100,15 @@ tools.
 - **No automated test framework is currently configured.** The build gate is `next build`
   (typecheck) + `eslint`. Acceptance criteria are written to be objectively verifiable even though
   there is no test runner yet (see `project.md`).
+- **Title Case for labels & titles.** Across the hub and every tool, interactive button/action labels
+  and static UI titles/headings render in Title Case via a shared acronym-aware `titleCase()` utility
+  (no CSS `capitalize`). Acronyms/proper nouns (AI, HVAC, CSV, OpenAI, 3D, …) are preserved;
+  user-entered content and long-form copy are not transformed. See ADR 0008.
+- **Modals guard unsaved changes.** The shared `Modal` confirms ("Unsaved changes will be lost")
+  before discarding in-progress edits on backdrop/Escape/close; clean modals close immediately. See
+  ADR 0009.
+- **AI config is an app-wide setting.** The bring-your-own-key AI provider/key/model is configured
+  once in the hub `/settings` page (not per tool) and reused by any AI feature.
 - **AI is bring-your-own-key, browser-direct.** Pet Health calls OpenAI or Anthropic from the client
   with a user-supplied key stored in IndexedDB (excluded from export, like OAuth tokens). No server
   proxy exists. Text extraction runs in-browser; the only AI egress is user-initiated chat requests

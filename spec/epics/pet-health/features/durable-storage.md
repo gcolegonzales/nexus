@@ -1,64 +1,54 @@
 ---
 id: FEAT-pet-health-6
-title: Durable local storage — own folder & full archive
+title: Durable local storage — automatic persistence & archive export
 epic: pet-health
-status: done
+status: ready
 depends_on: [FEAT-pet-health-2]
 ---
 
 ## Summary
-Make "you own your data forever" real without a backend. Two mechanisms: (1) request **persistent
-storage** so the browser will not silently evict the pet data; and (2) let the user connect a
-**document folder on their own disk** (File System Access API) where each pet's original files are
-written as real files alongside a JSON index, so the data survives a browser wipe and is portable by
-the user's own means (external drive, iCloud, Dropbox). A **full-archive export** (a single
-downloadable archive containing the original files plus the index) is the fallback for browsers
-without folder access. When neither folder nor archive is used, data still lives in IndexedDB as the
-working store; the folder/archive is the durable, user-owned copy.
+Make "you own your data forever" real without a backend, and make it **automatic** — no durability
+chores for the user. Persistent storage is requested automatically so the browser will not silently
+evict pet data. The only manual control is a **Export Archive** action (a single downloadable zip of
+the original files + a JSON index) for a portable backup the user keeps wherever they like. The
+prior "current posture" readout and the manual "connect document folder" flow are removed from the UI
+(persistence is automatic; the File System Access folder cannot be automatic — it needs a user
+gesture and re-prompts — so it is de-scoped from v1; the underlying lib may remain for a future
+opt-in). IndexedDB remains the working store; persistence + archive cover the "own your data" story.
 
 ## User stories
-- As a pet owner, I want my documents to keep existing even if I clear my browser or it runs low on
-  space.
-- As a pet owner, I want my files saved into a folder I control on my own computer, as real files I
-  can see and back up myself.
-- As a pet owner on a browser without folder access, I want a single archive I can download to keep
-  everything.
+- As a pet owner, I want my documents to keep existing even if my browser runs low on space — without
+  having to flip any switches.
+- As a pet owner, I want a one-click portable backup I can keep anywhere.
 
 ## Acceptance criteria
-- [ ] On first storing data (or via a settings action), the tool calls `navigator.storage.persist()`
-      and surfaces the resulting persistence state; it degrades gracefully if the API is unavailable
-      or the request is denied (data still works, with a note that durability isn't guaranteed).
-- [ ] Where the File System Access API is available, the user can **connect a document folder**; the
-      tool writes each record's original file into that folder (organized per pet) plus a JSON index
-      (e.g. `pet-health.json`) describing pets, record metadata, and extracted text, so the folder is
-      self-describing and human-navigable (real PDFs/images).
-- [ ] With a folder connected, new/updated/deleted records are reflected in the folder; on reload the
-      tool can reconnect the folder and reconcile from it (the folder is treated as a durable mirror /
-      source of the user's owned copy).
-- [ ] Where the File System Access API is **not** available (e.g. Firefox/Safari), the connect-folder
-      option is hidden/disabled and the user is offered a **full-archive export** instead: a single
-      download bundling the original files + the JSON index; a matching import restores them.
-- [ ] No backend, account, or network is involved in any of this; all writes are to the user's own
-      device/disk. (See ADR 0007.)
-- [ ] The tool clearly communicates the current durability posture (persistent? folder connected?
-      last archive export?) so the user knows how protected their data is.
+- [ ] Persistent storage is requested **automatically** — the tool calls `navigator.storage.persist()`
+      on load / first data write, with no user-facing button. It degrades silently if the API is
+      unavailable or the request is denied (data still works); failure is not surfaced as a chore.
+- [ ] There is **no "Current posture" section** and **no "Make storage persistent" button** in the UI;
+      persistence is automatic and invisible.
+- [ ] **Export Archive** remains a manual action: it produces a single downloadable zip containing the
+      original files + a JSON index (`pet-health.json` with pets, record metadata, extracted text); a
+      matching import restores them. This is the portable, user-owned backup.
+- [ ] The **Connect document folder** (File System Access) flow is **removed from the v1 UI** — it
+      cannot be made automatic (requires a user gesture and re-prompts each session). The folder lib
+      may remain in the codebase, unused by the UI, for a possible future opt-in.
+- [ ] No backend, account, or network is involved; all writes are local. (See ADR 0007.)
 
 ## Constraints / non-goals
-- No cross-device sync (explicit non-goal for now; a future opt-in sync could layer on top — see
-  `product.md` non-goals).
-- No automatic cloud backup; "save to folder" and archive export are user-initiated.
-- File System Access is best-effort and browser-dependent; IndexedDB remains the always-available
-  working store and the fallback path.
+- No cross-device sync (explicit non-goal; a future opt-in sync could layer on top).
+- Durability is automatic (persistent storage) plus a manual archive export; no folder mirroring in v1.
+- IndexedDB remains the always-available working store.
 
 ## Affected areas
-- `src/tools/pet-health/lib/{persistent-storage,fs-access-folder,archive}.ts`,
-  `src/tools/pet-health/components/StorageSettings*`, record storage in `FEAT-pet-health-2`.
+- `src/tools/pet-health/lib/{persistent-storage,archive}.ts` (folder lib retired from UI),
+  `src/tools/pet-health/components/StorageSettings*` (simplified to just Export Archive),
+  auto-persist call wired into the provider/tool load.
 
 ## Dependencies
 - Records vault (`FEAT-pet-health-2`).
 
 ## Open questions
-- None. (Resolved during planning: IndexedDB is the working store; when a folder is connected the app
-  writes through to it, and on reconnect the folder's JSON index is the source of truth for file bytes
-  with metadata merged last-write-wins by an `updatedAt` timestamp. No automatic three-way merge in
-  v1.)
+- [ ] Confirm dropping the **Document Folder** UI in v1 (recommended: yes — it can't be automatic and
+      adds clutter; persistence is automatic and archive export covers portability). The lib stays for
+      a possible future opt-in.

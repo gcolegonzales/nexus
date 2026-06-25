@@ -2,17 +2,19 @@
 id: FEAT-pet-health-4
 title: AI provider settings (bring-your-own-key)
 epic: pet-health
-status: done
-depends_on: [FEAT-pet-health-1]
+status: ready
+depends_on: [FEAT-pet-health-1, FEAT-hub-shell-4]
 ---
 
 ## Summary
-A settings panel that configures the AI used by the pet chat. The user picks a **provider** (OpenAI
-or Anthropic), pastes their **own API key**, and optionally picks a model; the configuration is
-stored locally and used to call the provider directly from the browser. The key is treated as a
-local secret — stored under a dedicated hub-level storage key (like OAuth tokens), masked in the UI,
-and **excluded from the export bundle**. When no key is configured, the chat feature is gated off
-with a clear call to action, but records storage and extraction (for the non-key path) still work.
+The bring-your-own-key AI configuration. The user picks a **provider** (OpenAI or Anthropic), pastes
+their **own API key**, and chooses a **model from a dropdown** of the provider's available models;
+the configuration is stored locally and used to call the provider directly from the browser. The key
+is a local secret — stored under a dedicated hub-level key (like OAuth tokens), masked in the UI, and
+**excluded from the export bundle**. This config now lives in the **hub-wide app Settings**
+(`/settings`, `FEAT-hub-shell-4`), not in the Pet Health tool — it is app-level config any AI feature
+can use. Pet Health chat reads availability from it; when no key is configured the chat is gated, but
+records storage and extraction still work.
 
 ## User stories
 - As a pet owner, I want to use my own AI subscription by pasting my API key.
@@ -21,9 +23,15 @@ with a clear call to action, but records storage and extraction (for the non-key
   export I might share.
 
 ## Acceptance criteria
-- [ ] A settings section within the tool lets the user select `provider` (`openai` | `anthropic`),
-      enter an API key, and optionally choose a `model` (sensible latest-capable default per
-      provider pre-filled); a non-default base URL is out of scope.
+- [ ] The AI provider settings UI lives in the **hub app Settings** (`/settings`), as the "AI Provider"
+      section (`FEAT-hub-shell-4`). The per-tool Pet Health AI settings UI is **removed** (Pet Health's
+      own Settings keeps only durability). Lets the user select `provider` (`openai` | `anthropic`) and
+      enter an API key.
+- [ ] **Model dropdown:** the model is chosen from a dropdown rather than free text. After a valid key
+      is entered/saved, the list is populated from the provider's available models (OpenAI
+      `GET /v1/models`; Anthropic `GET /v1/models`), filtered to chat-capable models and sorted; a
+      sensible default is preselected. Before a key is set, or if the fetch fails, a curated fallback
+      list of known current models is shown so the dropdown always works. Refreshing models re-fetches.
 - [ ] The configuration persists under a dedicated storage key (e.g. `hub:ai-provider`, added to
       `STORAGE_KEYS`) — **separate** from the `tool:pet-health` slice, mirroring how OAuth tokens are
       stored as their own hub keys.
@@ -44,12 +52,15 @@ with a clear call to action, but records storage and extraction (for the non-key
 - Only OpenAI and Anthropic in scope for now.
 
 ## Affected areas
-- `src/core/storage/keys.ts` (add `aiProvider` key), `src/tools/pet-health/storage/ai-config.ts`,
-  `src/tools/pet-health/components/AiSettings*`, `src/core/export/bundle.ts` (ensure key is excluded).
+- `src/tools/pet-health/storage/ai-config.ts` (config + a `fetchModels(provider, key)` helper hitting
+  the provider `/v1/models` endpoints with a curated fallback), the AI settings UI relocated to the hub
+  settings panel (`src/app/settings/SettingsPanel.tsx` + a shared `AiSettings` component, moved out of
+  `src/tools/pet-health/components/`), removal of the AI section from
+  `src/app/tools/pet-health/settings/page.tsx`. Storage key + export exclusion unchanged.
 
 ## Dependencies
-- Pets registry / tool shell (`FEAT-pet-health-1`).
+- Pets registry / tool shell (`FEAT-pet-health-1`); hub Settings page (`FEAT-hub-shell-4`).
 
 ## Open questions
-- None. (Resolved during planning: AI config lives at **hub level** under `hub:ai-provider` so future
-  AI tools can reuse it, and is treated like OAuth tokens — excluded from export.)
+- None. (AI config is hub-level under `hub:ai-provider`, excluded from export; the UI now lives in hub
+  Settings; model is chosen from a provider-fetched dropdown with a curated fallback.)

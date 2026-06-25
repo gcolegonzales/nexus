@@ -50,6 +50,19 @@ table and gate on it.
 - **IDs:** generated via the shared `createId()` helper; never hardcode except documented special
   ids (e.g. `house-{homeId}`).
 - **Geometry (Room Coat):** store millimetres; convert only for display/input via `lib/units.ts`.
+- **Title Case (labels & titles):** button/action labels and static UI titles/headings use Title Case
+  via the shared `titleCase()` utility in `@nexus/ui` (applied inside Button/PrimaryButton, Badge,
+  ToolSectionHeader, ToolNavBar, ToolCard). Don't use CSS `capitalize`. Never pass user-entered text
+  through it; PageHeader/Modal/Card titles aren't auto-cased (opt-in `titleCase` prop). See ADR 0008
+  / `FEAT-hub-shell-8`.
+- **Modal unsaved-changes guard:** edit forms report a `dirty` state to the shared `Modal`, which
+  confirms via `useConfirm` before closing a dirty modal. Clear dirty on successful save. ADR 0009 /
+  `FEAT-hub-shell-9`.
+- **Shared `DataTable`:** record/list tables use the generic `@nexus/ui` `DataTable<T>` (typed
+  columns + render fns, sortable headers, empty state) — don't hand-roll per-tool tables.
+  `FEAT-hub-shell-10`.
+- **Top-right entity selector:** a tool's active-entity switcher (unit, pet, …) goes in the
+  `ToolShell` `headerActions` slot (see Room Coat `UnitSwitcher`), not inline in the page body.
 
 ## Directory map
 - `src/app/page.tsx` — landing page (hero + registry-driven tool grid).

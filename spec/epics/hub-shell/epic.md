@@ -19,3 +19,6 @@ tool's manifest. This epic defines the contract every tool depends on.
 - `FEAT-hub-shell-5` — Local-first storage & schema versioning
 - `FEAT-hub-shell-6` — Backup & restore (export / import bundle)
 - `FEAT-hub-shell-7` — Calendar-provider OAuth integrations (Google & Microsoft)
+- `FEAT-hub-shell-8` — Title Case labels & titles (design-system convention)
+- `FEAT-hub-shell-9` — Modal unsaved-changes guard
+- `FEAT-hub-shell-10` — Reusable DataTable component (@nexus/ui)
