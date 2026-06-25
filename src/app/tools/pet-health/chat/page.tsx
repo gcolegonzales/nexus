@@ -66,7 +66,7 @@ export default function ChatPage() {
             </p>
           </div>
           <div className="pt-1 flex justify-center gap-3 flex-wrap">
-            <Button href="/tools/pet-health/settings">
+            <Button href="/settings">
               Configure AI in Settings
             </Button>
           </div>
