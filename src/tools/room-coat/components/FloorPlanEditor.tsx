@@ -470,7 +470,7 @@ export function FloorPlanEditor() {
       <div className="border-b border-border bg-background/80 px-4 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-text">Floor plan</h3>
+            <h3 className="text-lg font-semibold text-text">Floor Plan</h3>
             <p className="mt-0.5 text-sm text-muted">{toolHint[tool]}</p>
           </div>
           <div className="flex flex-wrap gap-1.5 rounded-xl border border-border bg-background p-1">

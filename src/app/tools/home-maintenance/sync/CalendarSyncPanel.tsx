@@ -201,7 +201,7 @@ export function CalendarSyncPanel() {
           <Card className="space-y-4">
           <div className="space-y-1">
             <h2 className="text-lg font-semibold text-text">
-              Universal export (.ics)
+              Universal Export (.ics)
             </h2>
             <p className="text-sm text-muted">
               Best for Apple Calendar and manual Outlook import. Re-export after

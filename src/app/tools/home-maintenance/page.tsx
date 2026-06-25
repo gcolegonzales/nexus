@@ -93,7 +93,7 @@ export default function HomeMaintenancePage() {
       <StaggerItem className="mt-8">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="space-y-1">
-            <h3 className="text-lg font-semibold text-text">Current tasks</h3>
+            <h3 className="text-lg font-semibold text-text">Current Tasks</h3>
             <p className="text-sm text-muted">
               Overdue, due within 30 days, or flagged for replacement.
               {overdueCount > 0 && (

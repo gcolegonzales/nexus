@@ -116,7 +116,7 @@ export function SettingsPanel() {
           <StaggerItem>
             <Card className="space-y-4">
           <div className="space-y-1">
-            <h2 className="text-lg font-semibold text-text">Backup & restore</h2>
+            <h2 className="text-lg font-semibold text-text">Backup & Restore</h2>
             <p className="text-sm text-muted">
               Download a JSON file to move your data to another device or keep a
               backup. Import replaces local data on this browser.
@@ -152,7 +152,7 @@ export function SettingsPanel() {
           <StaggerItem>
             <Card className="space-y-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-text">Calendar sync</h2>
+            <h2 className="text-lg font-semibold text-text">Calendar Sync</h2>
           </div>
           <p className="text-sm text-muted">
             Export .ics files or connect Google Calendar from the Home Maintenance

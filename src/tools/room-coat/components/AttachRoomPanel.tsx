@@ -9,7 +9,7 @@ export function AttachRoomPanel() {
 
   return (
     <Card className="space-y-2">
-      <h3 className="text-lg font-semibold text-text">Rooms in unit</h3>
+      <h3 className="text-lg font-semibold text-text">Rooms in Unit</h3>
       <p className="text-sm text-muted">
         {activePlacedRooms.length === 0
           ? "No rooms on this floor plan yet. Open the Floor plan section below, choose Add room, and pick from your catalog."
