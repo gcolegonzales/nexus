@@ -4,8 +4,8 @@ import { useState } from "react";
 import { usePetHealth } from "@/tools/pet-health/PetHealthProvider";
 import type { ExtractionStatus, PetRecord } from "@/tools/pet-health/types/state";
 import { RecordEditModal } from "@/tools/pet-health/components/RecordEditModal";
-import { Badge, Card, useConfirm } from "@nexus/ui";
-import type { BadgeVariant } from "@nexus/ui";
+import { Badge, DataTable, useConfirm } from "@nexus/ui";
+import type { BadgeVariant, Column, SortConfig } from "@nexus/ui";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,33 +63,98 @@ function extractionBadge(status: ExtractionStatus): ExtractionBadgeInfo {
   }
 }
 
-function sortRecords(records: PetRecord[]): PetRecord[] {
+// ---------------------------------------------------------------------------
+// Sort logic
+// ---------------------------------------------------------------------------
+
+function sortedRecords(records: PetRecord[], sortConfig: SortConfig): PetRecord[] {
   return [...records].sort((a, b) => {
-    // Most recent first: compare documentDate, fall back to uploadedAt.
-    const aDate = a.documentDate ?? a.uploadedAt;
-    const bDate = b.documentDate ?? b.uploadedAt;
-    if (bDate > aDate) return 1;
-    if (bDate < aDate) return -1;
-    // If documentDates are equal, use uploadedAt as tiebreaker.
-    return b.uploadedAt.localeCompare(a.uploadedAt);
+    const dir = sortConfig.order === "asc" ? 1 : -1;
+
+    switch (sortConfig.key) {
+      case "title":
+        return dir * a.title.localeCompare(b.title);
+
+      case "documentType":
+        return dir * a.documentType.localeCompare(b.documentType);
+
+      case "documentDate": {
+        const aDate = a.documentDate ?? a.uploadedAt;
+        const bDate = b.documentDate ?? b.uploadedAt;
+        if (aDate < bDate) return -1 * dir;
+        if (aDate > bDate) return 1 * dir;
+        return 0;
+      }
+
+      case "fileSize":
+        return dir * (a.fileSize - b.fileSize);
+
+      case "extractionStatus":
+        return dir * a.extractionStatus.localeCompare(b.extractionStatus);
+
+      default:
+        // Fallback: most-recent-first by documentDate then uploadedAt
+        return defaultSort(a, b);
+    }
   });
 }
 
+function defaultSort(a: PetRecord, b: PetRecord): number {
+  const aDate = a.documentDate ?? a.uploadedAt;
+  const bDate = b.documentDate ?? b.uploadedAt;
+  if (bDate > aDate) return 1;
+  if (bDate < aDate) return -1;
+  return b.uploadedAt.localeCompare(a.uploadedAt);
+}
+
 // ---------------------------------------------------------------------------
-// RecordRow
+// Action buttons
 // ---------------------------------------------------------------------------
 
-interface RecordRowProps {
+interface ActionButtonProps {
+  label: string;
+  busy?: boolean;
+  onClick: () => void;
+  danger?: boolean;
+}
+
+function ActionButton({ label, busy = false, onClick, danger = false }: ActionButtonProps) {
+  if (danger) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="btn-interactive inline-flex cursor-pointer items-center justify-center rounded-xl px-3 py-1.5 text-xs font-medium text-danger transition hover:bg-danger/10"
+      >
+        {label}
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      className="btn-interactive inline-flex cursor-pointer items-center justify-center rounded-xl border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text transition hover:border-primary/30 hover:bg-accent-sky/10 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {busy ? `${label}…` : label}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Actions cell — a self-contained component per row so hooks are legal
+// ---------------------------------------------------------------------------
+
+interface RecordActionsProps {
   record: PetRecord;
   onEdit: (record: PetRecord) => void;
 }
 
-function RecordRow({ record, onEdit }: RecordRowProps) {
+function RecordActions({ record, onEdit }: RecordActionsProps) {
   const { deleteRecord, reExtract, getRecordFile } = usePetHealth();
   const confirm = useConfirm();
   const [actionBusy, setActionBusy] = useState<string | null>(null);
-
-  const badge = extractionBadge(record.extractionStatus);
 
   async function handleOpen() {
     setActionBusy("open");
@@ -101,7 +166,6 @@ function RecordRow({ record, onEdit }: RecordRowProps) {
       }
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank", "noopener,noreferrer");
-      // Revoke after a short delay to allow the tab to load.
       setTimeout(() => URL.revokeObjectURL(url), 30_000);
     } finally {
       setActionBusy(null);
@@ -148,77 +212,21 @@ function RecordRow({ record, onEdit }: RecordRowProps) {
   }
 
   return (
-    <Card className="space-y-3">
-      {/* Header row */}
-      <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="truncate text-sm font-semibold text-text">{record.title}</p>
-          <p className="text-xs text-muted">
-            {documentTypeLabel(record.documentType)}
-            {record.documentDate ? ` · ${formatDate(record.documentDate)}` : ""}
-            {record.source ? ` · ${record.source}` : ""}
-          </p>
-        </div>
-
-        <Badge variant={badge.variant}>{badge.label}</Badge>
-      </div>
-
-      {/* Meta row */}
-      <p className="text-xs text-muted">
-        {record.fileName} · {formatFileSize(record.fileSize)} · Uploaded{" "}
-        {formatDate(record.uploadedAt)}
-      </p>
-
-      {/* Actions */}
-      <div className="flex flex-wrap items-center gap-2 pt-1">
-        <ActionButton
-          label="Open"
-          busy={actionBusy === "open"}
-          onClick={() => void handleOpen()}
-        />
-        <ActionButton
-          label="Download"
-          busy={actionBusy === "download"}
-          onClick={() => void handleDownload()}
-        />
-        <ActionButton
-          label="Edit"
-          onClick={() => onEdit(record)}
-        />
-        <ActionButton
-          label="Re-extract"
-          busy={actionBusy === "extract"}
-          onClick={() => void handleReExtract()}
-        />
-        <button
-          type="button"
-          onClick={() => void handleDelete()}
-          className="btn-interactive inline-flex cursor-pointer items-center justify-center rounded-xl px-3 py-1.5 text-xs font-medium text-danger transition hover:bg-danger/10"
-          aria-label={`Delete ${record.title}`}
-        >
-          Delete
-        </button>
-      </div>
-    </Card>
-  );
-}
-
-interface ActionButtonProps {
-  label: string;
-  busy?: boolean;
-  onClick: () => void;
-}
-
-function ActionButton({ label, busy = false, onClick }: ActionButtonProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={busy}
-      className="btn-interactive inline-flex cursor-pointer items-center justify-center rounded-xl border border-border bg-surface px-3 py-1.5 text-xs font-medium text-text transition hover:border-primary/30 hover:bg-accent-sky/10 disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {busy ? `${label}…` : label}
-    </button>
+    <div className="flex flex-wrap items-center justify-end gap-1.5">
+      <ActionButton label="Open" busy={actionBusy === "open"} onClick={() => void handleOpen()} />
+      <ActionButton
+        label="Download"
+        busy={actionBusy === "download"}
+        onClick={() => void handleDownload()}
+      />
+      <ActionButton label="Edit" onClick={() => onEdit(record)} />
+      <ActionButton
+        label="Re-extract"
+        busy={actionBusy === "extract"}
+        onClick={() => void handleReExtract()}
+      />
+      <ActionButton label="Delete" danger onClick={() => void handleDelete()} />
+    </div>
   );
 }
 
@@ -226,34 +234,80 @@ function ActionButton({ label, busy = false, onClick }: ActionButtonProps) {
 // RecordsList
 // ---------------------------------------------------------------------------
 
+// Default sort: most-recent-first (desc by date)
+const DEFAULT_SORT: SortConfig = { key: "documentDate", order: "desc" };
+
 export function RecordsList() {
   const { state, activePetId } = usePetHealth();
   const [editingRecord, setEditingRecord] = useState<PetRecord | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig>(DEFAULT_SORT);
 
   const petRecords = state.records.filter((r) => r.petId === activePetId);
-  const sorted = sortRecords(petRecords);
+  const sorted = sortedRecords(petRecords, sortConfig);
 
-  if (sorted.length === 0) {
-    return (
-      <div className="rounded-2xl border border-border bg-surface px-6 py-10 text-center">
-        <p className="text-sm text-muted">
-          No records yet. Upload a file above to get started.
-        </p>
-      </div>
+  function handleSort(key: string) {
+    setSortConfig((prev) =>
+      prev.key === key
+        ? { key, order: prev.order === "asc" ? "desc" : "asc" }
+        : { key, order: "asc" },
     );
   }
 
+  const columns: Column<PetRecord>[] = [
+    {
+      key: "title",
+      header: "Title",
+      sortable: true,
+      render: (r) => (
+        <span className="font-medium text-text">{r.title}</span>
+      ),
+    },
+    {
+      key: "documentType",
+      header: "Type",
+      sortable: true,
+      render: (r) => documentTypeLabel(r.documentType),
+    },
+    {
+      key: "documentDate",
+      header: "Date",
+      sortable: true,
+      render: (r) => formatDate(r.documentDate),
+    },
+    {
+      key: "fileSize",
+      header: "Size",
+      sortable: true,
+      render: (r) => formatFileSize(r.fileSize),
+    },
+    {
+      key: "extractionStatus",
+      header: "Status",
+      sortable: true,
+      render: (r) => {
+        const badge = extractionBadge(r.extractionStatus);
+        return <Badge variant={badge.variant}>{badge.label}</Badge>;
+      },
+    },
+    {
+      key: "actions",
+      header: "Actions",
+      sortable: false,
+      align: "right",
+      render: (r) => <RecordActions record={r} onEdit={setEditingRecord} />,
+    },
+  ];
+
   return (
     <>
-      <div className="space-y-3">
-        {sorted.map((record) => (
-          <RecordRow
-            key={record.id}
-            record={record}
-            onEdit={setEditingRecord}
-          />
-        ))}
-      </div>
+      <DataTable<PetRecord>
+        data={sorted}
+        columns={columns}
+        getRowId={(r) => r.id}
+        sortConfig={sortConfig}
+        onSort={handleSort}
+        emptyMessage="No Records yet. Upload a file above to get started."
+      />
 
       {/* Edit modal — keyed by record id so draft resets on open */}
       <RecordEditModal
