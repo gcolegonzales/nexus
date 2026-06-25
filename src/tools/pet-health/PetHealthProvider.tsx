@@ -24,6 +24,7 @@ import {
   loadPetHealth,
   savePetHealth,
 } from "@/tools/pet-health/storage";
+import { requestPersistentStorage } from "@/tools/pet-health/lib/persistent-storage";
 import type {
   ChatMessage,
   Pet,
@@ -111,6 +112,9 @@ export function PetHealthProvider({ children }: { children: ReactNode }) {
         }
         return loaded.pets[0]?.id ?? null;
       });
+      // Request persistent storage automatically after load. Fire-and-forget:
+      // the lib degrades silently if unsupported or denied.
+      void requestPersistentStorage().catch(() => undefined);
     } catch (error) {
       console.error("Failed to load Pet Health state", error);
       toast.error(
