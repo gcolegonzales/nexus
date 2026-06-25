@@ -16,12 +16,29 @@ import {
   saveRoomCoat,
 } from "@/tools/room-coat/storage";
 import type { RoomCoatState } from "@/tools/room-coat/types/state";
+import {
+  importPetHealthSlice,
+  loadPetHealth,
+  savePetHealth,
+} from "@/tools/pet-health/storage";
+import type { PetHealthState } from "@/tools/pet-health/types/state";
 import { downloadBlob } from "@/shared/download/downloadBlob";
 
-export const EXPORT_VERSION = 2;
+export const EXPORT_VERSION = 3;
+
+export interface NexusExportBundleV3 {
+  version: typeof EXPORT_VERSION;
+  exportedAt: string;
+  profile: HubProfile;
+  tools: {
+    "home-maintenance": HomeMaintenanceState;
+    "room-coat": RoomCoatState;
+    "pet-health": PetHealthState;
+  };
+}
 
 export interface NexusExportBundleV2 {
-  version: typeof EXPORT_VERSION;
+  version: 2;
   exportedAt: string;
   profile: HubProfile;
   tools: {
@@ -39,20 +56,26 @@ interface NexusExportBundleV1 {
   };
 }
 
-export type NexusExportBundle = NexusExportBundleV2;
+export type NexusExportBundle = NexusExportBundleV3;
 
-export function isNexusExportBundle(data: unknown): data is NexusExportBundleV1 | NexusExportBundleV2 {
+export function isNexusExportBundle(
+  data: unknown,
+): data is NexusExportBundleV1 | NexusExportBundleV2 | NexusExportBundleV3 {
   if (!data || typeof data !== "object") return false;
-  const bundle = data as Partial<NexusExportBundleV1 | NexusExportBundleV2>;
-  if (bundle.version !== 1 && bundle.version !== 2) return false;
+  const bundle = data as Partial<
+    NexusExportBundleV1 | NexusExportBundleV2 | NexusExportBundleV3
+  >;
+  if (bundle.version !== 1 && bundle.version !== 2 && bundle.version !== 3)
+    return false;
   return typeof bundle.tools === "object" && bundle.tools !== null;
 }
 
 export async function buildExportBundle(): Promise<NexusExportBundle> {
-  const [profile, homeMaintenance, roomCoat] = await Promise.all([
+  const [profile, homeMaintenance, roomCoat, petHealth] = await Promise.all([
     loadProfile(),
     loadHomeMaintenance(),
     loadRoomCoat(),
+    loadPetHealth(),
   ]);
 
   return {
@@ -62,15 +85,16 @@ export async function buildExportBundle(): Promise<NexusExportBundle> {
     tools: {
       "home-maintenance": homeMaintenance,
       "room-coat": roomCoat,
+      "pet-health": petHealth,
     },
   };
 }
 
 export async function importExportBundle(
-  bundle: NexusExportBundleV1 | NexusExportBundleV2,
+  bundle: NexusExportBundleV1 | NexusExportBundleV2 | NexusExportBundleV3,
 ): Promise<void> {
   const version = bundle.version;
-  if (version !== 1 && version !== EXPORT_VERSION) {
+  if (version !== 1 && version !== 2 && version !== EXPORT_VERSION) {
     throw new Error(`Unsupported export version: ${version}`);
   }
 
@@ -80,11 +104,18 @@ export async function importExportBundle(
   );
 
   const roomCoatSlice =
-    version === EXPORT_VERSION && "room-coat" in bundle.tools
-      ? bundle.tools["room-coat"]
+    (version === 2 || version === EXPORT_VERSION) && "room-coat" in bundle.tools
+      ? (bundle.tools as NexusExportBundleV2["tools"] | NexusExportBundleV3["tools"])["room-coat"]
       : undefined;
 
   await saveRoomCoat(importRoomCoatSlice(roomCoatSlice));
+
+  const petHealthSlice =
+    version === EXPORT_VERSION && "pet-health" in bundle.tools
+      ? (bundle.tools as NexusExportBundleV3["tools"])["pet-health"]
+      : undefined;
+
+  await savePetHealth(importPetHealthSlice(petHealthSlice));
 }
 
 export function downloadJsonBundle(bundle: NexusExportBundle): void {
