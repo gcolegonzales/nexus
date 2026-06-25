@@ -1,17 +1,21 @@
 import type { ReactNode } from "react";
+import { titleCase as applyTitleCase } from "./title-case";
 
 interface PageHeaderProps {
   title: string;
   description?: string;
   action?: ReactNode;
+  /** When true, run the title through titleCase(). Defaults to false. */
+  titleCase?: boolean;
 }
 
-export function PageHeader({ title, description, action }: PageHeaderProps) {
+export function PageHeader({ title, description, action, titleCase = false }: PageHeaderProps) {
+  const displayTitle = titleCase ? applyTitleCase(title) : title;
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-text sm:text-4xl">
-          {title}
+          {displayTitle}
         </h1>
         {description && (
           <p className="max-w-2xl text-base text-muted">{description}</p>

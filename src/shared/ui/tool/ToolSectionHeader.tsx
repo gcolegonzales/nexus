@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { StaggerItem } from "@nexus/ui";
+import { StaggerItem, titleCase } from "@nexus/ui";
 import { useToolShellHeaderActions } from "@/shared/ui/tool/ToolShellContext";
 
 interface ToolSectionHeaderProps {
@@ -26,7 +26,7 @@ export function ToolSectionHeader({
         <div className="min-w-0 space-y-1">
           {title && (
             <h2 className="text-lg font-semibold tracking-tight text-text">
-              {title}
+              {titleCase(title)}
             </h2>
           )}
           {description && (

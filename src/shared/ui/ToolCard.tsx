@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { ToolAccent, ToolStatus } from "@/core/registry/types";
-import { Badge, Card } from "@nexus/ui";
+import { Badge, Card, titleCase } from "@nexus/ui";
 
 const accentClasses: Record<ToolAccent, string> = {
   coral: "bg-accent-coral/12 text-accent-coral ring-accent-coral/20",
@@ -50,7 +50,7 @@ export function ToolCard({
         </div>
       </div>
       <div className="flex flex-1 flex-col gap-2">
-        <h3 className="text-lg font-semibold text-text">{name}</h3>
+        <h3 className="text-lg font-semibold text-text">{titleCase(name)}</h3>
         <p className="text-sm leading-relaxed text-muted">{description}</p>
       </div>
       {isAvailable && (

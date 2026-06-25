@@ -1,7 +1,19 @@
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { titleCase } from "@nexus/ui";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+
+/** Apply titleCase to string leaves; pass non-string nodes through unchanged. */
+function applyTitleCase(children: ReactNode): ReactNode {
+  if (typeof children === "string") return titleCase(children);
+  if (Array.isArray(children)) {
+    return children.map((child) =>
+      typeof child === "string" ? titleCase(child) : child
+    );
+  }
+  return children;
+}
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
@@ -27,26 +39,28 @@ export function Button({
 }: ButtonProps) {
   const classes = `btn-interactive inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium disabled:cursor-not-allowed ${variantClasses[variant]} ${className}`;
 
+  const casedChildren = applyTitleCase(children);
+
   if (href) {
     const isInternal = href.startsWith("/");
     if (isInternal) {
       return (
         <Link href={href} className={classes}>
-          {children}
+          {casedChildren}
         </Link>
       );
     }
 
     return (
       <a href={href} className={classes}>
-        {children}
+        {casedChildren}
       </a>
     );
   }
 
   return (
     <button className={classes} {...props}>
-      {children}
+      {casedChildren}
     </button>
   );
 }

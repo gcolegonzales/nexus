@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { titleCase } from "@nexus/ui";
 
 export interface ToolNavLink {
   href: string;
@@ -37,7 +38,7 @@ export function ToolNavBar({ links, ariaLabel }: ToolNavBarProps) {
                   : "text-muted hover:bg-background hover:text-text"
               }`}
             >
-              {link.label}
+              {titleCase(link.label)}
             </Link>
           );
         })}

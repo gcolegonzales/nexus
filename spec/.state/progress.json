@@ -3,9 +3,9 @@
   "branch": "spec-build/ui-refinement-1",
   "startedAtNote": "UI-refinement delta build started 2026-06-25",
   "tasks": {
-    "T-016": { "status": "pending", "model": "sonnet" },
-    "T-017": { "status": "pending", "model": "opus" },
-    "T-018": { "status": "pending", "model": "sonnet" },
+    "T-016": { "status": "done", "model": "sonnet", "filesChanged": ["packages/ui/src/title-case.ts", "packages/ui/src/index.ts", "packages/next/src/index.ts"] },
+    "T-017": { "status": "done", "model": "opus", "filesChanged": ["src/app/settings/SettingsPanel.tsx", "src/app/settings/AiSettings.tsx", "src/tools/pet-health/storage/ai-config.ts"] },
+    "T-018": { "status": "done", "model": "sonnet", "filesChanged": ["src/app/tools/pet-health/page.tsx", "src/tools/pet-health/components/ToolLayout.tsx", "src/tools/pet-health/components/PetSelector.tsx", "src/tools/pet-health/components/PetsList.tsx"] },
     "T-019": { "status": "pending", "model": "sonnet" },
     "T-020": { "status": "pending", "model": "opus" },
     "T-021": { "status": "pending", "model": "opus" },
@@ -13,5 +13,5 @@
     "T-023": { "status": "pending", "model": "haiku" },
     "T-024": { "status": "pending", "model": "sonnet" }
   },
-  "waves": { "completed": [], "current": 1 }
+  "waves": { "completed": [1], "current": 2 }
 }

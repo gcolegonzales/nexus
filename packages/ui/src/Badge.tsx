@@ -1,6 +1,18 @@
 import type { ReactNode } from "react";
+import { titleCase } from "./title-case";
 
 export type BadgeVariant = "default" | "mint" | "amber" | "sky";
+
+/** Apply titleCase to string leaves; pass non-string nodes through unchanged. */
+function applyTitleCase(children: ReactNode): ReactNode {
+  if (typeof children === "string") return titleCase(children);
+  if (Array.isArray(children)) {
+    return children.map((child) =>
+      typeof child === "string" ? titleCase(child) : child
+    );
+  }
+  return children;
+}
 
 interface BadgeProps {
   children: ReactNode;
@@ -24,7 +36,7 @@ export function Badge({
     <span
       className={`inline-flex items-center rounded-full px-3 py-1 text-[0.8125rem] font-medium leading-none ${variantClasses[variant]} ${className}`}
     >
-      {children}
+      {applyTitleCase(children)}
     </span>
   );
 }
