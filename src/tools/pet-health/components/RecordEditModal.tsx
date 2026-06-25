@@ -55,11 +55,17 @@ interface RecordEditModalProps {
 
 export function RecordEditModal({ record, onClose }: RecordEditModalProps) {
   const { updateRecord } = usePetHealth();
+  const initial = useState<RecordDraft>(() =>
+    record ? toDraft(record) : { title: "", documentType: "other", documentDate: "", source: "" },
+  )[0];
   const [draft, setDraft] = useState<RecordDraft>(() =>
     record ? toDraft(record) : { title: "", documentType: "other", documentDate: "", source: "" },
   );
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [titleError, setTitleError] = useState<string | null>(null);
+
+  const dirty = !saved && JSON.stringify(draft) !== JSON.stringify(initial);
 
   // Re-sync draft when the record changes (e.g. modal re-opened for different record).
   // We do this with a key on the modal itself in RecordsList, so draft starts fresh.
@@ -86,6 +92,8 @@ export function RecordEditModal({ record, onClose }: RecordEditModalProps) {
         documentDate: draft.documentDate || undefined,
         source: draft.source.trim() || undefined,
       });
+      // Clear dirty before closing so the Modal guard does not fire on save.
+      setSaved(true);
       onClose();
     } finally {
       setSaving(false);
@@ -97,6 +105,7 @@ export function RecordEditModal({ record, onClose }: RecordEditModalProps) {
       open={record !== null}
       onClose={onClose}
       title="Edit record"
+      dirty={dirty}
     >
       <form
         className="space-y-5"

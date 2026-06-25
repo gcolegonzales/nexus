@@ -42,6 +42,7 @@ export function PetsList({ onAddPet }: PetsListProps) {
   const { state, activePetId, setActivePet, deletePet } = usePetHealth();
   const confirm = useConfirm();
   const [editingPet, setEditingPet] = useState<Pet | null>(null);
+  const [editDirty, setEditDirty] = useState(false);
 
   async function handleDelete(pet: Pet) {
     const confirmed = await confirm({
@@ -149,11 +150,22 @@ export function PetsList({ onAddPet }: PetsListProps) {
       {/* Edit modal */}
       <Modal
         open={editingPet !== null}
-        onClose={() => setEditingPet(null)}
+        onClose={() => {
+          setEditingPet(null);
+          setEditDirty(false);
+        }}
         title={`Edit ${editingPet?.name ?? "pet"}`}
+        dirty={editDirty}
       >
         {editingPet && (
-          <PetForm pet={editingPet} onDone={() => setEditingPet(null)} />
+          <PetForm
+            pet={editingPet}
+            onDone={() => {
+              setEditingPet(null);
+              setEditDirty(false);
+            }}
+            onDirtyChange={setEditDirty}
+          />
         )}
       </Modal>
     </>

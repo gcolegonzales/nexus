@@ -2,6 +2,8 @@
 
 import { useEffect, useId, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useConfirm } from "./ConfirmProvider";
+import { titleCase as applyTitleCase } from "./title-case";
 
 interface ModalProps {
   open: boolean;
@@ -9,6 +11,14 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   panelClassName?: string;
+  /**
+   * When true, user-initiated close affordances (backdrop, Escape, ×) prompt for
+   * confirmation before discarding unsaved edits. Calling `onClose` programmatically
+   * (e.g. after a successful save) never prompts. Defaults to false.
+   */
+  dirty?: boolean;
+  /** When true, run the title through titleCase(). Defaults to false. */
+  titleCase?: boolean;
 }
 
 export function Modal({
@@ -17,15 +27,35 @@ export function Modal({
   title,
   children,
   panelClassName = "",
+  dirty = false,
+  titleCase = false,
 }: ModalProps) {
   const titleId = useId();
+  const confirm = useConfirm();
+  const displayTitle = titleCase ? applyTitleCase(title) : title;
+
+  // Guarded close — only used by the internal user-initiated affordances.
+  // `onClose` itself is never wrapped, so post-save programmatic closes never prompt.
+  async function requestClose() {
+    if (dirty) {
+      const confirmed = await confirm({
+        title: "Unsaved Changes",
+        message: "Unsaved changes will be lost.",
+        confirmLabel: "Discard",
+        cancelLabel: "Keep Editing",
+        destructive: true,
+      });
+      if (!confirmed) return;
+    }
+    onClose();
+  }
 
   useEffect(() => {
     if (!open) return;
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
+        void requestClose();
       }
     }
 
@@ -36,7 +66,8 @@ export function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       document.documentElement.style.overflow = "";
     };
-  }, [open, onClose]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, dirty]);
 
   if (typeof document === "undefined" || !open) {
     return null;
@@ -47,7 +78,7 @@ export function Modal({
       <button
         type="button"
         aria-label="Close dialog"
-        onClick={onClose}
+        onClick={() => void requestClose()}
         className="absolute inset-0 cursor-pointer bg-[var(--overlay)] backdrop-blur-[2px] transition-opacity duration-350 ease-out animate-fade-in"
       />
 
@@ -58,7 +89,7 @@ export function Modal({
         className={`relative z-10 w-full max-w-md animate-page-in rounded-2xl border border-border bg-surface p-6 shadow-[var(--shadow-hover)] ${panelClassName}`}
       >
         <h2 id={titleId} className="text-lg font-semibold text-text">
-          {title}
+          {displayTitle}
         </h2>
         <div className="mt-5">{children}</div>
       </div>

@@ -11,6 +11,7 @@ export function PetSelector() {
   const { state, activePetId, setActivePet } = usePetHealth();
   const [open, setOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [addDirty, setAddDirty] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
 
@@ -38,8 +39,22 @@ export function PetSelector() {
           + Add Pet
         </button>
 
-        <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add a pet">
-          <PetForm onDone={() => setAddModalOpen(false)} />
+        <Modal
+          open={addModalOpen}
+          onClose={() => {
+            setAddModalOpen(false);
+            setAddDirty(false);
+          }}
+          title="Add a pet"
+          dirty={addDirty}
+        >
+          <PetForm
+            onDone={() => {
+              setAddModalOpen(false);
+              setAddDirty(false);
+            }}
+            onDirtyChange={setAddDirty}
+          />
         </Modal>
       </>
     );
@@ -125,8 +140,22 @@ export function PetSelector() {
         </button>
       </div>
 
-      <Modal open={addModalOpen} onClose={() => setAddModalOpen(false)} title="Add a pet">
-        <PetForm onDone={() => setAddModalOpen(false)} />
+      <Modal
+        open={addModalOpen}
+        onClose={() => {
+          setAddModalOpen(false);
+          setAddDirty(false);
+        }}
+        title="Add a pet"
+        dirty={addDirty}
+      >
+        <PetForm
+          onDone={() => {
+            setAddModalOpen(false);
+            setAddDirty(false);
+          }}
+          onDirtyChange={setAddDirty}
+        />
       </Modal>
     </>
   );

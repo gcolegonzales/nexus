@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Pet } from "@/tools/pet-health/types/state";
 import type {
   CreatePetInput,
@@ -71,13 +71,24 @@ interface PetFormProps {
   /** When provided, the form edits an existing pet. */
   pet?: Pet;
   onDone: () => void;
+  /** Reports whether the form has unsaved changes vs. its initial values. */
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function PetForm({ pet, onDone }: PetFormProps) {
+export function PetForm({ pet, onDone, onDirtyChange }: PetFormProps) {
   const { createPet, updatePet } = usePetHealth();
+  const initial = useState<PetDraft>(() => toDraft(pet))[0];
   const [draft, setDraft] = useState<PetDraft>(() => toDraft(pet));
   const [errors, setErrors] = useState<{ name?: string; species?: string }>({});
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const dirty =
+    !saved && JSON.stringify(draft) !== JSON.stringify(initial);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   function set<K extends keyof PetDraft>(field: K, value: PetDraft[K]) {
     setDraft((prev) => ({ ...prev, [field]: value }));
@@ -119,6 +130,9 @@ export function PetForm({ pet, onDone }: PetFormProps) {
       } else {
         await createPet(patch as CreatePetInput);
       }
+      // Clear dirty before requesting close so the guard does not fire on save.
+      setSaved(true);
+      onDirtyChange?.(false);
       onDone();
     } finally {
       setSaving(false);
