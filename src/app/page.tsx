@@ -6,6 +6,7 @@ import { BlobBackground } from "@/shared/ui/illustrations/BlobBackground";
 import { HeroIllustration } from "@/shared/ui/illustrations/HeroIllustration";
 import { ToolIconHomeMaintenance } from "@/shared/ui/illustrations/ToolIconHomeMaintenance";
 import { ToolIconRoomCoat } from "@/shared/ui/illustrations/ToolIconRoomCoat";
+import { ToolIconPetHealth } from "@/shared/ui/illustrations/ToolIconPetHealth";
 
 function ToolIconPlaceholder({ label }: { label: string }) {
   return (
@@ -21,6 +22,8 @@ function getToolIcon(id: string) {
       return <ToolIconHomeMaintenance size={26} />;
     case "room-coat":
       return <ToolIconRoomCoat size={26} />;
+    case "pet-health":
+      return <ToolIconPetHealth size={26} />;
     default:
       return <ToolIconPlaceholder label="?" />;
   }
@@ -76,6 +79,7 @@ export default function HomePage() {
               href={tool.href}
               status={tool.status}
               accent={tool.accent}
+              requiresAI={tool.requiresAI}
               icon={getToolIcon(tool.id)}
             />
           ))}

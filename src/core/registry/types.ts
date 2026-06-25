@@ -9,4 +9,5 @@ export interface ToolManifest {
   href: string;
   status: ToolStatus;
   accent: ToolAccent;
+  requiresAI?: boolean;
 }

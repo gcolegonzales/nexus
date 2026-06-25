@@ -17,6 +17,7 @@ interface ToolCardProps {
   status: ToolStatus;
   accent: ToolAccent;
   icon: ReactNode;
+  requiresAI?: boolean;
 }
 
 export function ToolCard({
@@ -26,6 +27,7 @@ export function ToolCard({
   status,
   accent,
   icon,
+  requiresAI,
 }: ToolCardProps) {
   const isAvailable = status === "available";
 
@@ -40,9 +42,12 @@ export function ToolCard({
         >
           {icon}
         </div>
-        <Badge variant={isAvailable ? "mint" : "sky"}>
-          {isAvailable ? "Available" : "Coming Soon"}
-        </Badge>
+        <div className="flex flex-wrap justify-end gap-1.5">
+          <Badge variant={isAvailable ? "mint" : "sky"}>
+            {isAvailable ? "Available" : "Coming Soon"}
+          </Badge>
+          {requiresAI && <Badge variant="amber">AI Required</Badge>}
+        </div>
       </div>
       <div className="flex flex-1 flex-col gap-2">
         <h3 className="text-lg font-semibold text-text">{name}</h3>
