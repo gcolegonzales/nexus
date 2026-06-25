@@ -41,3 +41,23 @@ Append-only audit trail. One entry per task and per wave integration.
 ## Final
 - All 15 tasks done across 5 waves. Final `npm run build` ✓, `npm run lint` 0 errors (104 warnings, all pre-existing room-coat style warnings + a few benign new ones; none block the gate).
 - Branch `spec-build/pet-health-1`. Not pushed. No automated tests in repo — behavioral verification (real upload→extract→chat with a live key) is a manual `npm run dev` pass.
+
+## Runtime verification (npm run dev, browser preview)
+Verified working at runtime, no console errors anywhere:
+- Landing tile renders with "Available" + "AI Required" badges; tool route loads; nav (Overview/Records/AI Chat/Settings) works.
+- Empty state shows graceful-degradation copy ("document vault works… no account or API key needed").
+- Pet renders from storage (seeded a pet directly into IndexedDB `tool:pet-health` — provider load/normalize/render works; age-from-DOB computed = "6 yr").
+- Records page shows upload UI with correct accept types (`application/pdf,image/png,image/jpeg,image/webp,image/heic`, 50 MB cap).
+- AI Chat correctly GATED when no key ("AI provider not configured… Configure AI in Settings").
+- Settings: API key (masked password input) saved → IndexedDB `hub:ai-provider` = {provider:anthropic, apiKey, model:claude-sonnet-4-6}; configured state shows masked key `••••••••••••0000` (full key never rendered); model default pre-filled.
+- Chat UN-gates once key present; non-clinical disclaimer shown; textarea + Send render.
+- Chat send pipeline exercised with a DUMMY key: real browser-direct call to Anthropic (CORS allowed via `anthropic-dangerous-direct-browser-access`), got genuine 401, surfaced READABLE error "Anthropic rejected the API key (401). Check your key in AI settings." + Retry; user message preserved, history uncorrupted.
+
+- **Real PDF upload → extraction PROVEN:** uploaded a valid text-layer PDF via the records UI → record created, pdf.js initialized in the Turbopack build, extracted text correctly (method `pdf-text`, status `done` → "Readable" badge), stored on the record. Records list shows it with Open/Download/Edit/Re-extract/Delete. This is the full upload→review path working end to end on a real file.
+- **Species dropdown wiring confirmed by code:** PetForm uses the shared `@nexus/ui` `Select` (same component shipped in Room Coat / Home Maintenance) with onChange→setDraft→createPet; the automation harness just couldn't drive its portaled listbox.
+
+NOT exercised at runtime (needs real inputs only a human has):
+- A SUCCESSFUL AI reply / context grounding — needs a VALID paid API key (the hookup is proven up to a real authenticated 401 from Anthropic; only the happy-path response remains unseen).
+- Tesseract OCR on a scanned image (the local OCR fallback) — needs a real scanned image; the PDF text-layer path is proven.
+- File System Access "connect folder" flow — needs the native OS picker.
+- Branch pushed to origin (spec-build/pet-health-1). gh CLI not installed → PR opened via web link.
