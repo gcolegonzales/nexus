@@ -13,6 +13,8 @@ export { Badge } from "./Badge";
 export type { BadgeVariant } from "./Badge";
 export { Card } from "./Card";
 export { Checkbox } from "./Checkbox";
+export { DataTable } from "./DataTable";
+export type { Column, SortConfig, DataTableProps } from "./DataTable";
 export { Collapsible } from "./Collapsible";
 export { FilterTransitionPanel } from "./FilterTransitionPanel";
 export { IconActionButton } from "./IconActionButton";

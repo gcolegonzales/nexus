@@ -12,6 +12,7 @@ export {
   Card,
   Checkbox,
   Collapsible,
+  DataTable,
   EditIcon,
   FilterTransitionPanel,
   IconActionButton,
@@ -39,7 +40,16 @@ export {
   ACRONYMS,
 } from "@nexus/ui";
 
-export type { BadgeVariant, MultiSelectOption, ThemeMode, ToastOptions, ToastTone } from "@nexus/ui";
+export type {
+  BadgeVariant,
+  Column,
+  DataTableProps,
+  MultiSelectOption,
+  SortConfig,
+  ThemeMode,
+  ToastOptions,
+  ToastTone,
+} from "@nexus/ui";
 
 export { Button } from "./Button";
 export { FormActions } from "./FormActions";
