@@ -6,8 +6,10 @@ export const STORAGE_KEYS = {
   profile: "hub:profile",
   homeMaintenance: "tool:home-maintenance",
   roomCoat: "tool:room-coat",
+  petHealth: "tool:pet-health",
   googleAuth: "hub:google-auth",
   microsoftAuth: "hub:microsoft-auth",
+  aiProvider: "hub:ai-provider",
   schemaVersion: "meta:schema-version",
 } as const;
 
