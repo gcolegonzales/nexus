@@ -1,24 +1,17 @@
 {
   "version": 1,
-  "branch": "spec-build/pet-health-1",
-  "startedAtNote": "build started 2026-06-25",
+  "branch": "spec-build/ui-refinement-1",
+  "startedAtNote": "UI-refinement delta build started 2026-06-25",
   "tasks": {
-    "T-001": { "status": "done", "model": "sonnet", "attempts": 1, "filesChanged": ["package.json", "package-lock.json"] },
-    "T-002": { "status": "done", "model": "haiku", "attempts": 1, "filesChanged": ["src/core/storage/keys.ts"] },
-    "T-003": { "status": "done", "model": "sonnet", "attempts": 1, "filesChanged": ["src/tools/pet-health/types/state.ts", "src/tools/pet-health/types/ai.ts"] },
-    "T-004": { "status": "done", "model": "sonnet", "attempts": 1, "filesChanged": ["src/core/registry/types.ts", "src/core/registry/tools.ts", "src/tools/pet-health/manifest.ts", "src/app/page.tsx", "src/shared/ui/ToolCard.tsx", "src/shared/ui/illustrations/ToolIconPetHealth.tsx"] },
-    "T-005": { "status": "done", "model": "sonnet", "attempts": 1, "filesChanged": ["src/tools/pet-health/storage/index.ts", "src/tools/pet-health/storage/files.ts"] },
-    "T-006": { "status": "done", "model": "sonnet", "attempts": 1, "filesChanged": ["src/tools/pet-health/storage/ai-config.ts"] },
-    "T-007": { "status": "done", "model": "opus", "attempts": 1, "filesChanged": ["src/tools/pet-health/lib/extract-pdf.ts", "src/tools/pet-health/lib/extract-ocr.ts", "src/tools/pet-health/lib/extract.ts"] },
-    "T-008": { "status": "done", "model": "opus", "attempts": 1, "filesChanged": ["src/tools/pet-health/lib/build-system-prompt.ts", "src/tools/pet-health/lib/trim-history.ts", "src/tools/pet-health/lib/providers/openai.ts", "src/tools/pet-health/lib/providers/anthropic.ts", "src/tools/pet-health/lib/providers/index.ts"] },
-    "T-009": { "status": "done", "model": "opus", "attempts": 1, "filesChanged": ["src/tools/pet-health/PetHealthProvider.tsx"] },
-    "T-010": { "status": "done", "model": "opus", "attempts": 1, "filesChanged": ["src/tools/pet-health/lib/persistent-storage.ts", "src/tools/pet-health/lib/fs-folder.ts", "src/tools/pet-health/lib/archive.ts", "src/tools/pet-health/fs-access.d.ts"] },
-    "T-011": { "status": "done", "model": "sonnet", "attempts": 1, "filesChanged": ["src/core/export/bundle.ts"] },
-    "T-012": { "status": "done", "model": "sonnet", "attempts": 1, "filesChanged": ["src/app/tools/pet-health/layout.tsx", "src/app/tools/pet-health/page.tsx", "src/tools/pet-health/components/PetsList.tsx", "src/tools/pet-health/components/PetForm.tsx", "src/tools/pet-health/components/ToolLayout.tsx", "src/tools/pet-health/components/ToolNav.tsx", "src/tools/pet-health/components/ToolSection.tsx"] },
-    "T-013": { "status": "done", "model": "sonnet", "attempts": 1, "filesChanged": ["src/app/tools/pet-health/records/page.tsx", "src/tools/pet-health/components/RecordUpload.tsx", "src/tools/pet-health/components/RecordsList.tsx", "src/tools/pet-health/components/RecordEditModal.tsx"] },
-    "T-014": { "status": "done", "model": "sonnet", "attempts": 1, "filesChanged": ["src/app/tools/pet-health/settings/page.tsx", "src/tools/pet-health/components/AiSettings.tsx", "src/tools/pet-health/components/StorageSettings.tsx", "src/tools/pet-health/lib/ai-availability.ts"] },
-    "T-015": { "status": "done", "model": "sonnet", "attempts": 1, "filesChanged": ["src/app/tools/pet-health/chat/page.tsx", "src/tools/pet-health/components/ChatPanel.tsx", "src/tools/pet-health/components/ChatMessage.tsx"] }
+    "T-016": { "status": "pending", "model": "sonnet" },
+    "T-017": { "status": "pending", "model": "opus" },
+    "T-018": { "status": "pending", "model": "sonnet" },
+    "T-019": { "status": "pending", "model": "sonnet" },
+    "T-020": { "status": "pending", "model": "opus" },
+    "T-021": { "status": "pending", "model": "opus" },
+    "T-022": { "status": "pending", "model": "sonnet" },
+    "T-023": { "status": "pending", "model": "haiku" },
+    "T-024": { "status": "pending", "model": "sonnet" }
   },
-  "waves": { "completed": [1, 2, 3, 4, 5], "current": null },
-  "result": "complete: 15/15 tasks done, final build + lint green on spec-build/pet-health-1"
+  "waves": { "completed": [], "current": 1 }
 }
