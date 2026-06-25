@@ -6,12 +6,13 @@
     "T-016": { "status": "done", "model": "sonnet", "filesChanged": ["packages/ui/src/title-case.ts", "packages/ui/src/index.ts", "packages/next/src/index.ts"] },
     "T-017": { "status": "done", "model": "opus", "filesChanged": ["src/app/settings/SettingsPanel.tsx", "src/app/settings/AiSettings.tsx", "src/tools/pet-health/storage/ai-config.ts"] },
     "T-018": { "status": "done", "model": "sonnet", "filesChanged": ["src/app/tools/pet-health/page.tsx", "src/tools/pet-health/components/ToolLayout.tsx", "src/tools/pet-health/components/PetSelector.tsx", "src/tools/pet-health/components/PetsList.tsx"] },
-    "T-019": { "status": "pending", "model": "sonnet" },
-    "T-020": { "status": "pending", "model": "opus" },
-    "T-021": { "status": "pending", "model": "opus" },
-    "T-022": { "status": "pending", "model": "sonnet" },
-    "T-023": { "status": "pending", "model": "haiku" },
-    "T-024": { "status": "pending", "model": "sonnet" }
+    "T-019": { "status": "done", "model": "sonnet", "filesChanged": ["packages/next/src/Button.tsx", "packages/ui/src/Badge.tsx", "src/shared/ui/tool/ToolSectionHeader.tsx", "src/shared/ui/tool/ToolNavBar.tsx", "src/shared/ui/ToolCard.tsx", "packages/ui/src/PageHeader.tsx", "packages/ui/src/Card.tsx"] },
+    "T-020": { "status": "done", "model": "opus", "filesChanged": ["packages/ui/src/Modal.tsx", "src/tools/pet-health/components/PetForm.tsx", "src/tools/pet-health/components/RecordEditModal.tsx", "src/tools/pet-health/components/PetSelector.tsx", "src/tools/pet-health/components/PetsList.tsx"] },
+    "T-021": { "status": "done", "model": "opus", "filesChanged": ["packages/ui/src/DataTable.tsx", "packages/ui/src/index.ts", "packages/next/src/index.ts"] },
+    "T-022": { "status": "done", "model": "sonnet", "filesChanged": ["src/app/tools/pet-health/settings/page.tsx", "src/tools/pet-health/components/StorageSettings.tsx", "src/tools/pet-health/PetHealthProvider.tsx"] },
+    "T-023": { "status": "done", "model": "haiku", "filesChanged": ["src/app/tools/pet-health/chat/page.tsx"] },
+    "T-024": { "status": "done", "model": "sonnet", "filesChanged": ["src/tools/pet-health/components/RecordsList.tsx"] }
   },
-  "waves": { "completed": [1], "current": 2 }
+  "waves": { "completed": [1, 2, 3], "current": null },
+  "result": "complete: 9/9 tasks done, final build + lint green on spec-build/ui-refinement-1"
 }

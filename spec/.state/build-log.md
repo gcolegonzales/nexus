@@ -61,3 +61,9 @@ NOT exercised at runtime (needs real inputs only a human has):
 - Tesseract OCR on a scanned image (the local OCR fallback) — needs a real scanned image; the PDF text-layer path is proven.
 - File System Access "connect folder" flow — needs the native OS picker.
 - Branch pushed to origin (spec-build/pet-health-1). gh CLI not installed → PR opened via web link.
+
+## UI refinement delta (spec-build/ui-refinement-1)
+9 tasks, 3 waves, all build+lint gated; final build + lint green (0 errors).
+- T-016 titleCase util · T-017 AI settings → hub + model dropdown · T-018 overview dashboard + top-right pet selector
+- T-019 apply titleCase in primitives · T-020 modal unsaved-changes guard · T-021 reusable DataTable · T-022 auto durability + simplified tool settings · T-023 chat gate → hub /settings
+- T-024 records list on shared DataTable
