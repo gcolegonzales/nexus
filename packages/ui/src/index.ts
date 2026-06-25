@@ -47,3 +47,4 @@ export { ThemeProvider, useTheme } from "./theme/ThemeProvider";
 export { ThemeScript } from "./theme/ThemeScript";
 export { ToastProvider, useToast } from "./ToastProvider";
 export type { ToastOptions, ToastTone } from "./ToastProvider";
+export { titleCase, ACRONYMS } from "./title-case";

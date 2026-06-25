@@ -35,6 +35,8 @@ export {
   storeTheme,
   useTheme,
   THEME_STORAGE_KEY,
+  titleCase,
+  ACRONYMS,
 } from "@nexus/ui";
 
 export type { BadgeVariant, MultiSelectOption, ThemeMode, ToastOptions, ToastTone } from "@nexus/ui";
