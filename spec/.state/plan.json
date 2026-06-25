@@ -1,0 +1,296 @@
+{
+  "version": 1,
+  "generatedFrom": "spec/",
+  "scope": "EPIC-pet-health (+ delta to FEAT-hub-shell-1, FEAT-hub-shell-6)",
+  "waves": [
+    { "wave": 1, "tasks": ["T-001", "T-002", "T-003", "T-004"] },
+    { "wave": 2, "tasks": ["T-005", "T-006", "T-007", "T-008"] },
+    { "wave": 3, "tasks": ["T-009", "T-010", "T-011"] },
+    { "wave": 4, "tasks": ["T-012", "T-013", "T-014"] },
+    { "wave": 5, "tasks": ["T-015"] }
+  ],
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Add client deps: pdfjs-dist, tesseract.js, jszip",
+      "feature": "FEAT-pet-health-3",
+      "description": "Add the three client-side libraries Pet Health needs and confirm the app still builds. Add `pdfjs-dist` (PDF text-layer extraction), `tesseract.js` (local WASM OCR), and `jszip` (archive export/import) to the root package.json dependencies, and update package-lock.json via `npm install` at the repo root (npm workspaces). Pick versions compatible with Next.js 16.2 / React 19. Do NOT write any feature code — this task only lands the dependencies so later tasks don't conflict on package.json/lockfile. Read AGENTS.md: this is a customized Next.js; do not assume upstream behavior.",
+      "files": ["package.json", "package-lock.json"],
+      "acceptance": [
+        "pdfjs-dist, tesseract.js, and jszip are present in package.json dependencies",
+        "npm install completes and package-lock.json is updated",
+        "npm run build still succeeds with the new deps installed"
+      ],
+      "dependsOn": [],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "sonnet",
+      "modelReason": "sonnet — must choose versions compatible with the customized Next 16 / React 19 and verify the build, not purely mechanical",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-002",
+      "title": "Add pet-health and ai-provider storage keys",
+      "feature": "FEAT-pet-health-1",
+      "description": "Extend the STORAGE_KEYS map in src/core/storage/keys.ts with two new keys, following the existing string-literal pattern: `petHealth: \"tool:pet-health\"` (the tool's state slice) and `aiProvider: \"hub:ai-provider\"` (the hub-level AI provider config + key, treated like the existing OAuth token keys). Do not change CURRENT_SCHEMA_VERSION or DB_VERSION. Per-file record Blobs will use dynamically-built keys of the form `tool:pet-health:file:{id}` and do not need an entry here. This is an additive, mechanical change matching the surrounding entries.",
+      "files": ["src/core/storage/keys.ts"],
+      "acceptance": [
+        "STORAGE_KEYS gains petHealth = 'tool:pet-health'",
+        "STORAGE_KEYS gains aiProvider = 'hub:ai-provider'",
+        "Existing keys and exports are unchanged; build passes"
+      ],
+      "dependsOn": [],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "haiku",
+      "modelReason": "haiku — add two typed keys to an existing const map, explicit pattern shown in the feature/affected-areas",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-003",
+      "title": "Pet Health data-model types",
+      "feature": "FEAT-pet-health-1",
+      "description": "Create the TypeScript types for the Pet Health state slice under src/tools/pet-health/types/. Define: (1) Pet — id, name (required), species (required), breed?, dateOfBirth?, sex?, weight?, microchipId?, vetName?, clinic?, notes?, createdAt, updatedAt. (2) Record (medical record / sign-out doc) — id, petId, title, documentType ('medical-record'|'discharge'|'lab'|'imaging'|'invoice'|'other'), documentDate?, source?, fileName, mimeType, fileSize, uploadedAt, updatedAt, fileRef (id used for the per-file Blob key), extractedText?, extractionStatus ('pending'|'extracting'|'done'|'empty'|'failed'), extractionMethod ('pdf-text'|'ocr'|'vision'|'none'). (3) Conversation/ChatMessage — per-pet message history: messages of role 'user'|'assistant' with content and a timestamp, keyed by petId. (4) PetHealthState — schemaVersion (number), pets: Pet[], records: Record[], conversations: Record-by-petId message arrays, plus any durability metadata (e.g. lastFolderName?, persistedRequestedAt?). Also create src/tools/pet-health/types/ai.ts: AiProvider = 'openai'|'anthropic'; AiProviderConfig — provider, apiKey, model. Keep these as pure type/interface declarations; no logic. Restate from the feature files: only name and species are required on a Pet; records carry both file metadata and extracted text.",
+      "files": ["src/tools/pet-health/types/state.ts", "src/tools/pet-health/types/ai.ts"],
+      "acceptance": [
+        "Pet, Record, Conversation/ChatMessage, and PetHealthState types exist with the fields above",
+        "PetHealthState carries schemaVersion",
+        "AiProvider and AiProviderConfig types exist (openai | anthropic, plus model)",
+        "Types compile (npm run build)"
+      ],
+      "dependsOn": [],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "sonnet",
+      "modelReason": "sonnet — defines the tool's data model, some design judgment shaping fields consumed by every later task",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-004",
+      "title": "Register tool + ToolManifest requiresAI + 'AI Required' badge",
+      "feature": "FEAT-hub-shell-1",
+      "description": "Wire Pet Health into the registry and landing grid, and add the AI-required badge. (1) Extend ToolManifest in src/core/registry/types.ts with an optional `requiresAI?: boolean`. (2) Create src/tools/pet-health/manifest.ts exporting a ToolManifest: id 'pet-health', name 'Pet Health', description (one line), href '/tools/pet-health', status 'available', accent 'mint', requiresAI true. (3) Register it in src/core/registry/tools.ts TOOLS array. (4) Create a tool icon component src/shared/ui/illustrations/ToolIconPetHealth.tsx (SVG, accept a size prop, mint accent) consistent with the existing ToolIcon* illustrations, and map id 'pet-health' to it wherever the landing page resolves icons (src/app/page.tsx getToolIcon). (5) In the tool card component (src/shared/ui/ToolCard.tsx — confirm the actual filename) render an 'AI Required' badge when manifest.requiresAI is set, alongside the existing status badge. Read AGENTS.md / the Next docs before touching any client/server boundary. Acceptance from FEAT-hub-shell-1: the registry now lists three tools; unknown ids still fall back to the placeholder icon.",
+      "files": ["src/core/registry/types.ts", "src/core/registry/tools.ts", "src/tools/pet-health/manifest.ts", "src/app/page.tsx", "src/shared/ui/ToolCard.tsx", "src/shared/ui/illustrations/ToolIconPetHealth.tsx"],
+      "acceptance": [
+        "ToolManifest has optional requiresAI?: boolean",
+        "Pet Health manifest registered; landing grid shows a third card with a dedicated mint icon",
+        "Cards with requiresAI show an 'AI Required' badge",
+        "Unknown tool ids still fall back to the placeholder icon"
+      ],
+      "dependsOn": [],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "sonnet",
+      "modelReason": "sonnet — multi-file but well-understood registry/landing wiring from explicit criteria",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-005",
+      "title": "Pet Health storage layer (state slice + per-file Blob store)",
+      "feature": "FEAT-pet-health-2",
+      "description": "Implement persistence for Pet Health following the existing room-coat/home-maintenance storage pattern (src/tools/*/storage). Create src/tools/pet-health/storage/index.ts with: loadPetHealth() — read STORAGE_KEYS.petHealth via core storage getItem, seed a fresh normalized default if absent, normalize/migrate on load (handle schemaVersion), and always write the current schemaVersion; savePetHealth(state); and importPetHealthSlice(data) — normalize unknown input into a valid PetHealthState (used by the export/import bundle). Create src/tools/pet-health/storage/files.ts — a per-file Blob store keyed `tool:pet-health:file:{fileRef}` using the core IndexedDB kv API: putRecordFile(fileRef, Blob), getRecordFile(fileRef): Promise<Blob|undefined>, deleteRecordFile(fileRef). Keep the JSON slice free of Blobs (only metadata + fileRef + extractedText live in the slice). Use the shared createId() helper for ids. Restate: deleting a record must remove both its metadata and its Blob; deleting a pet cascades to all its records' Blobs — expose helpers the provider can call.",
+      "files": ["src/tools/pet-health/storage/index.ts", "src/tools/pet-health/storage/files.ts"],
+      "acceptance": [
+        "loadPetHealth/savePetHealth persist the slice under tool:pet-health and normalize+migrate on load with schemaVersion",
+        "importPetHealthSlice normalizes arbitrary input to a valid state (seeds default when absent)",
+        "Per-file Blob store reads/writes/deletes Blobs under tool:pet-health:file:{fileRef}",
+        "Slice stays JSON-serializable (no Blobs inside it)"
+      ],
+      "dependsOn": ["T-002", "T-003"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "sonnet",
+      "modelReason": "sonnet — follows an established storage pattern; the per-file Blob store is a small new but well-scoped addition",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-006",
+      "title": "AI provider config storage (hub:ai-provider)",
+      "feature": "FEAT-pet-health-4",
+      "description": "Implement load/save/clear for the AI provider configuration under STORAGE_KEYS.aiProvider ('hub:ai-provider'), separate from the pet-health slice and treated like OAuth tokens. Create src/tools/pet-health/storage/ai-config.ts: loadAiConfig(): Promise<AiProviderConfig|null>, saveAiConfig(config), clearAiConfig(), and isAiConfigured(config): boolean (true when provider is known and apiKey is non-empty). Provide sensible default model constants per provider (latest capable defaults — read the claude-api skill for the current Anthropic model id; pick the current capable OpenAI chat model). This module only persists/reads config; no network calls. Important: this key must NOT be included in the export bundle (enforced in T-011).",
+      "files": ["src/tools/pet-health/storage/ai-config.ts"],
+      "acceptance": [
+        "AI config persists under hub:ai-provider, separate from the tool slice",
+        "load/save/clear and isAiConfigured work",
+        "Sensible latest-capable default model per provider is provided"
+      ],
+      "dependsOn": ["T-002", "T-003"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "sonnet",
+      "modelReason": "sonnet — small secret-handling persistence module; correctness of the exclude-from-export contract matters",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-007",
+      "title": "Text-extraction libs (PDF text layer + local Tesseract OCR)",
+      "feature": "FEAT-pet-health-3",
+      "description": "Implement in-browser, no-network text extraction. Create src/tools/pet-health/lib/extract-pdf.ts using pdfjs-dist to pull the embedded text layer from a PDF Blob, concatenating pages with page markers; configure the pdf.js worker correctly for this CUSTOMIZED Next.js 16 build (read node_modules/next/dist/docs as AGENTS.md requires; keep it client-side). Create src/tools/pet-health/lib/extract-ocr.ts using tesseract.js to OCR an image Blob (and rasterized scanned-PDF pages) entirely locally — no key, no network. Create src/tools/pet-health/lib/extract.ts — an orchestrator extractRecordText(blob, mimeType) that: for PDFs tries the text layer first and falls back to OCR when the text layer is empty; for images uses OCR; returns { text, method: 'pdf-text'|'ocr'|'none', status: 'done'|'empty'|'failed' }. Must run async without blocking the UI and be idempotent (re-running replaces prior output). Do not wire into the provider/UI here — just the libs. v1 has NO vision-model path.",
+      "files": ["src/tools/pet-health/lib/extract-pdf.ts", "src/tools/pet-health/lib/extract-ocr.ts", "src/tools/pet-health/lib/extract.ts"],
+      "acceptance": [
+        "Digital PDFs: embedded text extracted in-browser, multi-page concatenated with page markers",
+        "Scanned PDFs/images: local Tesseract.js OCR fallback, no network/key",
+        "Orchestrator returns text + method + status and is idempotent",
+        "pdf.js worker is configured so npm run build succeeds (no SSR/worker breakage)"
+      ],
+      "dependsOn": ["T-001", "T-003"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "opus",
+      "modelReason": "opus — pdf.js worker + Tesseract WASM bundling in a customized Next build is fiddly and unfamiliar; wrong setup breaks the build",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-008",
+      "title": "Chat libs: system prompt, history trim, OpenAI + Anthropic adapters",
+      "feature": "FEAT-pet-health-5",
+      "description": "Implement the provider-agnostic chat plumbing as pure libs (no React). (1) src/tools/pet-health/lib/build-system-prompt.ts — buildSystemPrompt(pet, records) producing a system message containing the pet profile fields plus the concatenated extractedText of that pet's records, each under a header with the record title/date/type; include the non-clinical disclaimer instruction. (2) src/tools/pet-health/lib/trim-history.ts — trimContext({systemPrompt, history, newMessage}, budget) using a char-based token estimate (~4 chars/token), reserving a portion of the model context for the reply, trimming history oldest-first, then truncating record context with a flag when still over; return the messages to send plus a `truncated` boolean. (3) src/tools/pet-health/lib/providers/openai.ts and anthropic.ts — each exposes sendChat(config, messages): Promise<{text}> calling the provider's HTTP API directly from the browser with the user's key (OpenAI Chat Completions shape; Anthropic Messages shape with system separate from messages). READ THE claude-api SKILL before writing the Anthropic adapter (correct endpoint, headers incl. anthropic-version and the browser-access header, model id, request/response shape). (4) providers/index.ts — sendChat(config, ...) dispatching by provider. Non-streaming. Surface readable errors for invalid key / rate limit so the UI can show + offer retry.",
+      "files": ["src/tools/pet-health/lib/build-system-prompt.ts", "src/tools/pet-health/lib/trim-history.ts", "src/tools/pet-health/lib/providers/openai.ts", "src/tools/pet-health/lib/providers/anthropic.ts", "src/tools/pet-health/lib/providers/index.ts"],
+      "acceptance": [
+        "System prompt includes pet profile + concatenated record extractedText with per-record headers + disclaimer",
+        "History trimmed oldest-first to a token budget; record context truncated with a flag when needed",
+        "OpenAI and Anthropic adapters call their APIs directly with the user's key (correct shapes); dispatch by provider",
+        "Provider/quota/auth errors are surfaced as readable, retryable errors"
+      ],
+      "dependsOn": ["T-003"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "opus",
+      "modelReason": "opus — two distinct provider API integrations (incl. Anthropic, must follow claude-api skill) plus token budgeting; correctness-critical",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-009",
+      "title": "PetHealthProvider (pets, records, conversations state)",
+      "feature": "FEAT-pet-health-1",
+      "description": "Create src/tools/pet-health/PetHealthProvider.tsx — the React context provider that owns Pet Health state, following the HomeMaintenanceProvider/RoomCoatProvider pattern. On mount, load the slice (T-005) and expose isReady. Expose mutations that persist via savePetHealth and survive reload: pets — createPet, updatePet, deletePet (cascades to that pet's records + their Blobs via the files store), plus active/selected pet tracking; records — addRecord(petId, File) which stores the Blob (files store), creates the metadata record, then asynchronously runs extraction (T-007 extract orchestrator) updating extractionStatus/extractedText on completion (idempotent re-extract action), updateRecord (metadata), deleteRecord (removes metadata + Blob), getRecordFile (for open/download); conversations — getMessages(petId), appendMessage(petId, msg), clearConversation(petId); deleting a pet clears its conversation. Keep network/provider-call logic OUT of here (the chat UI calls the chat libs and then appendMessage). Expose a typed usePetHealth() hook; throw if used outside the provider. Read AGENTS.md / Next docs for the client-component boundary.",
+      "files": ["src/tools/pet-health/PetHealthProvider.tsx"],
+      "acceptance": [
+        "Provider loads the slice, exposes isReady, and a usePetHealth() hook",
+        "Pet CRUD + active-pet selection; deleting a pet cascades to records, Blobs, and conversation",
+        "Record add stores Blob + metadata then runs extraction async (idempotent re-extract); update/delete work",
+        "Conversation get/append/clear persist; all mutations survive reload"
+      ],
+      "dependsOn": ["T-005", "T-006"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "opus",
+      "modelReason": "opus — central shared-state architecture consumed by every UI task; high blast radius, orchestrates storage + async extraction",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-010",
+      "title": "Durable-storage libs (persistent storage, FS-Access folder, archive)",
+      "feature": "FEAT-pet-health-6",
+      "description": "Implement the durability mechanisms as libs (no React). (1) src/tools/pet-health/lib/persistent-storage.ts — requestPersistentStorage() wrapping navigator.storage.persist()/persisted(), degrading gracefully when unavailable; return the resulting state. (2) src/tools/pet-health/lib/fs-folder.ts — File System Access API: feature-detect support; connectFolder() (showDirectoryPicker) returning a handle; writeAll(handle, state, getBlob) writing each record's original file into the folder organized per pet plus a self-describing JSON index pet-health.json (pets + record metadata + extractedText); readIndex(handle) to reconcile on reconnect (folder is source of truth for file bytes; metadata merged last-write-wins by updatedAt). Persist the handle if practical, else require reconnect. (3) src/tools/pet-health/lib/archive.ts — using jszip, exportArchive(state, getBlob): Blob (zip of original files + index) and importArchive(zip): { state, files } as the fallback for browsers without FS Access. All operations are local/no-network. Read node_modules/next docs re: keeping these browser-only (no SSR).",
+      "files": ["src/tools/pet-health/lib/persistent-storage.ts", "src/tools/pet-health/lib/fs-folder.ts", "src/tools/pet-health/lib/archive.ts"],
+      "acceptance": [
+        "requestPersistentStorage() calls navigator.storage.persist() and degrades gracefully",
+        "FS-Access: connect folder, write per-pet files + self-describing pet-health.json index, reconcile on reconnect",
+        "Where FS-Access is unavailable, jszip archive export/import bundles original files + index",
+        "All paths are local; build succeeds with these browser-only modules"
+      ],
+      "dependsOn": ["T-001", "T-005"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "opus",
+      "modelReason": "opus — File System Access + zip archiving is unfamiliar, browser-variant, and easy to get subtly wrong",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-011",
+      "title": "Export/import bundle v3 (add pet-health slice, exclude secrets)",
+      "feature": "FEAT-hub-shell-6",
+      "description": "Update src/core/export/bundle.ts to version 3. Add the `pet-health` slice (pets + record metadata + extractedText only — NOT raw file Blobs, NOT the AI key) to the export bundle's tools object, building it from the pet-health storage (loadPetHealth) and restoring via importPetHealthSlice (T-005). Bump EXPORT_VERSION to 3 and update isNexusExportBundle to accept versions 1, 2, or 3 (still requires a tools object). On import: a v1 bundle (no room-coat) and a v2 bundle (no pet-health) must both succeed, seeding fresh defaults for absent slices (pet-health importer seeds default when absent). Ensure secrets stored under their own hub keys — OAuth tokens (hub:google-auth, hub:microsoft-auth) and the AI provider key (hub:ai-provider) — are NEVER written into the bundle. Mirror the existing per-tool import wiring used by the settings import flow.",
+      "files": ["src/core/export/bundle.ts"],
+      "acceptance": [
+        "Export builds { version:3, exportedAt, profile, tools } with home-maintenance, room-coat, and pet-health slices",
+        "AI provider key and OAuth tokens are excluded from the bundle",
+        "isNexusExportBundle accepts versions 1/2/3; v1 and v2 bundles import successfully seeding absent slices",
+        "pet-health slice carries metadata + extracted text only (no raw Blobs)"
+      ],
+      "dependsOn": ["T-005"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "sonnet",
+      "modelReason": "sonnet — extends a versioned bundle with an established pattern; the exclude-secrets + back-compat rules are explicit",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-012",
+      "title": "Tool shell: layout, overview & pets UI",
+      "feature": "FEAT-pet-health-1",
+      "description": "Build the tool's route shell and pet-management UI. Create src/app/tools/pet-health/layout.tsx wrapping children in PetHealthProvider + the tool shell chrome (mirror how room-coat/home-maintenance compose ToolShell). Create src/app/tools/pet-health/page.tsx (overview): when not ready, a loading state; when no pets, an empty state prompting 'Add your first pet' and making clear the chat needs the user's own AI key while the vault works without one (graceful-degradation messaging from FEAT-pet-health-1); when pets exist, list them and allow selecting the active pet. Create components under src/tools/pet-health/components/ for the pet list and a pet create/edit form (PetsList.tsx, PetForm.tsx) covering all profile fields (only name + species required). Deleting a pet uses the in-app confirm modal (ConfirmModal — reuse the existing shared component, NOT window.confirm). Consume usePetHealth(). Read AGENTS.md / Next docs for layout/page/client boundaries.",
+      "files": ["src/app/tools/pet-health/layout.tsx", "src/app/tools/pet-health/page.tsx", "src/tools/pet-health/components/PetsList.tsx", "src/tools/pet-health/components/PetForm.tsx"],
+      "acceptance": [
+        "/tools/pet-health loads under PetHealthProvider with a loading state until ready",
+        "Empty state prompts adding a first pet and explains chat needs a key while the vault works without one",
+        "Create/edit/delete pets (name+species required); delete uses the in-app ConfirmModal",
+        "Active pet selection works"
+      ],
+      "dependsOn": ["T-009"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "sonnet",
+      "modelReason": "sonnet — standard provider-backed CRUD UI from explicit criteria",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-013",
+      "title": "Records vault UI (upload, list, edit, download, status)",
+      "feature": "FEAT-pet-health-2",
+      "description": "Build the per-pet records UI. Add a records route/section under src/app/tools/pet-health (e.g. records/page.tsx, scoped to the active pet) and components src/tools/pet-health/components/RecordUpload.tsx, RecordsList.tsx, RecordEditModal.tsx. Upload: a file input accepting application/pdf and image/png,image/jpeg,image/webp(,image/heic where supported); each selected file calls provider.addRecord (stores Blob + metadata, triggers async extraction). List: records under the active pet, most recent first by documentDate then uploadedAt, showing title, type, date, size, and an extraction-status badge ('Readable' / 'No text found' / 'Failed' / extracting). Actions: open/preview, download original (use src/shared/download/downloadBlob.ts + provider.getRecordFile), edit metadata (title, documentType, documentDate, source) via the modal, delete (in-app ConfirmModal). Provide a 're-extract' action that re-runs extraction for a record. Consume usePetHealth(). Read AGENTS.md / Next docs for client boundaries.",
+      "files": ["src/app/tools/pet-health/records/page.tsx", "src/tools/pet-health/components/RecordUpload.tsx", "src/tools/pet-health/components/RecordsList.tsx", "src/tools/pet-health/components/RecordEditModal.tsx"],
+      "acceptance": [
+        "Upload PDFs/images per pet; each becomes a record via provider.addRecord",
+        "List shows title/type/date/size + extraction-status badge, most recent first",
+        "Open/preview, download original, edit metadata, delete (ConfirmModal), and re-extract all work",
+        "Extraction status is visible per record"
+      ],
+      "dependsOn": ["T-009", "T-007"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "sonnet",
+      "modelReason": "sonnet — feature UI wiring provider methods + existing download helper from explicit criteria",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-014",
+      "title": "Settings page: AI provider + durability",
+      "feature": "FEAT-pet-health-4",
+      "description": "Build the tool's settings UI at src/app/tools/pet-health/settings/page.tsx with two sections. (A) AI provider (FEAT-pet-health-4): choose provider (openai|anthropic), enter a masked API key, optionally choose a model (default pre-filled per provider); save via saveAiConfig (T-006), show a 'configured' state (provider + masked key + model) with a Clear action; never render the raw key back in full; minimal validation (non-empty key, known provider). Expose/compose an availability gate lib src/tools/pet-health/lib/ai-availability.ts (or reuse isAiConfigured) that the chat reads. (B) Durability (FEAT-pet-health-6): a button to request persistent storage (T-010), a 'Connect document folder' control where File System Access is supported (hidden/disabled otherwise) that connects + writes-through the current state via fs-folder, and an 'Export archive' action using archive.ts as the fallback; show the current durability posture (persistent? folder connected? last archive export?). Wire a write-through so record/pet changes are reflected to a connected folder (an effect at this level or via provider subscription — keep it simple, last-write-wins). Components: src/tools/pet-health/components/AiSettings.tsx, StorageSettings.tsx. Consume usePetHealth() + the storage/durable libs.",
+      "files": ["src/app/tools/pet-health/settings/page.tsx", "src/tools/pet-health/components/AiSettings.tsx", "src/tools/pet-health/components/StorageSettings.tsx", "src/tools/pet-health/lib/ai-availability.ts"],
+      "acceptance": [
+        "AI settings: pick provider, masked key entry, optional model, save/clear, configured state never shows the full key",
+        "Availability gate derives 'AI ready' from provider + non-empty key",
+        "Durability: request persistent storage, connect folder (where supported) with write-through, export archive fallback, show posture",
+        "No key/folder required for the rest of the tool to work"
+      ],
+      "dependsOn": ["T-009", "T-006", "T-010"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "sonnet",
+      "modelReason": "sonnet — settings UI composing already-built libs from explicit criteria",
+      "parallelizable": true,
+      "status": "pending"
+    },
+    {
+      "id": "T-015",
+      "title": "Pet chat UI (context-grounded, gated, with disclaimer)",
+      "feature": "FEAT-pet-health-5",
+      "description": "Build the per-pet chat UI. Add a chat route/section under src/app/tools/pet-health (scoped to the active pet) and components src/tools/pet-health/components/ChatPanel.tsx, ChatMessage.tsx. Behavior: if AI is not configured (availability gate from T-014), gate the chat with a prompt to open Settings — do not attempt a call. When configured: render the per-pet conversation from provider.getMessages; on send, build the system prompt (buildSystemPrompt with the pet + its records), trim to budget (trim-history), call providers.sendChat(config, messages) (T-008), then appendMessage for both the user and assistant turns; while awaiting, disable input and show a processing indicator (non-streaming). Show a visible 'some records truncated' notice when trim flags truncation. Surface readable provider/network/quota errors and allow retry without corrupting stored history. Persist history per pet (provider) across reload; offer 'Clear conversation'. Show a persistent non-clinical disclaimer ('Informational only — not veterinary advice. Consult your vet.'). Consume usePetHealth() + loadAiConfig + chat libs. Read AGENTS.md / Next docs for client boundaries.",
+      "files": ["src/app/tools/pet-health/chat/page.tsx", "src/tools/pet-health/components/ChatPanel.tsx", "src/tools/pet-health/components/ChatMessage.tsx"],
+      "acceptance": [
+        "Chat gated with a configure-key prompt when AI is not configured (no call attempted)",
+        "Each send uses pet profile + record context, trims to budget, routes to the configured provider, and persists both turns per pet",
+        "Processing indicator + disabled input while awaiting; truncation notice shown when applicable",
+        "Provider errors are readable and retryable without corrupting history; persistent non-clinical disclaimer shown; clear-conversation works"
+      ],
+      "dependsOn": ["T-009", "T-008", "T-014"],
+      "verify": ["npm run build", "npm run lint"],
+      "model": "sonnet",
+      "modelReason": "sonnet — stateful UI, but the hard logic (prompt build, trim, provider calls) lives in already-built libs; this wires them",
+      "parallelizable": false,
+      "status": "pending"
+    }
+  ]
+}

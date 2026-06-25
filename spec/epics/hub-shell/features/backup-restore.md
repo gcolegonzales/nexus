@@ -17,13 +17,21 @@ confirms with the user, replaces local data, and reloads.
 
 ## Acceptance criteria
 - [ ] Export builds a bundle `{ version, exportedAt, profile, tools }` where `tools` contains the
-      `home-maintenance` and `room-coat` state slices; current export version is **2**.
+      `home-maintenance`, `room-coat`, and `pet-health` state slices; current export version is **3**.
+- [ ] The export bundle **excludes** secrets stored under their own hub keys — OAuth tokens
+      (`hub:google-auth`, `hub:microsoft-auth`) and the AI provider key (`hub:ai-provider`) are never
+      written to the bundle.
+- [ ] The `pet-health` slice in the bundle carries pets, record metadata, and extracted text; whether
+      it also carries raw file Blobs is per `FEAT-pet-health-2`'s open question (default: metadata +
+      extracted text only, raw files stay device-local).
 - [ ] Export downloads a file named `nexus-export-YYYY-MM-DD.json` (date from `exportedAt`) with
       MIME `application/json`, then shows a success confirmation.
 - [ ] Import accepts a JSON file (`application/json,.json`), parses it, and validates via
-      `isNexusExportBundle` (accepts `version` 1 **or** 2; requires a `tools` object).
+      `isNexusExportBundle` (accepts `version` 1, 2, **or** 3; requires a `tools` object).
 - [ ] A **v1** bundle (profile + `home-maintenance` only) imports successfully; the room-coat slice
       is treated as absent and the room-coat importer seeds a fresh default.
+- [ ] A **v2** bundle (no `pet-health` slice) imports successfully; the pet-health slice is treated as
+      absent and the pet-health importer seeds a fresh default.
 - [ ] Before replacing data, import asks for confirmation ("Import will replace your local Nexus
       data on this device. Continue?"); on cancel, nothing changes.
 - [ ] On confirm, import overwrites the profile (merged with defaults) and each tool slice via that

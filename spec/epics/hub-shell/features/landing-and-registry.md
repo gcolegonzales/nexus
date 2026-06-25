@@ -23,19 +23,24 @@ tool is a registry change plus the tool's own subtree — no edit to the landing
       and a secondary CTA "Settings" → `/settings`.
 - [ ] A "Tools" section renders one card per entry in `TOOLS` (the registry array), responsive:
       1 column (base), 2 (sm), 3 (lg).
-- [ ] `ToolManifest` has exactly: `id`, `name`, `description`, `href`, `status`
-      (`"available" | "coming-soon"`), `accent` (`"coral" | "mint" | "sky" | "amber"`).
+- [ ] `ToolManifest` has: `id`, `name`, `description`, `href`, `status`
+      (`"available" | "coming-soon"`), `accent` (`"coral" | "mint" | "sky" | "amber"`), and an
+      optional `requiresAI?: boolean` capability marker (absent/false for tools that need no AI).
 - [ ] The registry exports `TOOLS` and helpers `getAvailableTools()` (status `available`) and
       `getComingSoonTools()` (status `coming-soon`).
 - [ ] An **available** card is a clickable `Link` to its `href`, shows its accent-colored icon, an
       "available" badge, name, description, and an "Open tool →" affordance.
+- [ ] A card whose manifest has `requiresAI` shows an **"AI Required"** badge alongside its status
+      badge, signalling the tool's headline feature needs the user's own AI key (the tool may still be
+      partially usable without one — see the tool's own spec).
 - [ ] A **coming-soon** card is non-interactive (reduced opacity, default cursor), shows a
       "coming-soon" badge, and no "Open tool" affordance.
-- [ ] Each card resolves an icon by tool `id` (`home-maintenance`, `room-coat`); an unknown id
-      falls back to a placeholder "?" icon rather than erroring.
-- [ ] Today the registry contains exactly two tools: Home Maintenance (`id` `home-maintenance`,
-      accent `coral`, href `/tools/home-maintenance`, status `available`) and Room Coat
-      (`id` `room-coat`, accent `sky`, href `/tools/room-coat`, status `available`).
+- [ ] Each card resolves an icon by tool `id` (`home-maintenance`, `room-coat`, `pet-health`); an
+      unknown id falls back to a placeholder "?" icon rather than erroring.
+- [ ] The registry contains three tools: Home Maintenance (`id` `home-maintenance`, accent `coral`,
+      href `/tools/home-maintenance`, status `available`), Room Coat (`id` `room-coat`, accent `sky`,
+      href `/tools/room-coat`, status `available`), and Pet Health (`id` `pet-health`, accent `mint`,
+      href `/tools/pet-health`, status `available`, `requiresAI` true).
 
 ## Constraints / non-goals
 - The landing page must not hardcode tool-specific data beyond icon mapping; everything else comes

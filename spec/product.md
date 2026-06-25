@@ -3,13 +3,16 @@
 ## Vision
 Nexus is a **local-first hub for personal home-management utilities**. It hosts a growing
 collection of focused "tools" behind one shell, where all user data lives in the browser
-(IndexedDB) and never touches a server. No account is required to use any tool. The only
-optional network dependency is calendar-provider OAuth, used solely to push reminders the
-user explicitly chooses to sync. The product's promise to the user is on every page:
-"Your data stays on this device. No account required."
+(IndexedDB) and never touches a Nexus server. No account is required to use any tool. There are two
+**optional, opt-in** outbound integrations: calendar-provider OAuth, used to push reminders the user
+chooses to sync; and bring-your-own-key AI chat in Pet Health, which sends a pet's record content to
+the user's chosen AI provider only when they configure their own key and send a message. The
+product's promise to the user is on every page: "Your data stays on this device. No account
+required." — and it holds for storage of every tool; the optional integrations are explicit,
+user-initiated, and never required.
 
-Today Nexus ships two tools — **Home Maintenance Calendar** and **Room Coat** — plus the
-shared hub that hosts them. The architecture is deliberately additive: new tools register
+Today Nexus ships three tools — **Home Maintenance Calendar**, **Room Coat**, and **Pet Health** —
+plus the shared hub that hosts them. The architecture is deliberately additive: new tools register
 themselves in a central registry and appear on the landing page without touching existing
 tools.
 
@@ -19,17 +22,28 @@ tools.
 - **One coherent shell, many independent tools.** Tools share a profile, theme, persistence
   layer, and navigation chrome, but each owns its own state slice and routes. Adding or
   removing a tool is a localized change.
-- **Portable data.** A user can export all of their data to a single JSON file and restore it
-  on another device/browser.
-- **Opt-in cloud, never required.** Calendar sync (Google / Microsoft) is the only outbound
-  integration; it is per-tool, per-user, and fully optional.
+- **Portable data, owned forever.** A user can export all of their data to a single JSON file and
+  restore it elsewhere. Pet Health goes further toward permanent ownership: it requests persistent
+  storage and can write a pet's original documents into a folder on the user's own disk (real files +
+  a self-describing index), so the durable copy is theirs — no account, no server, survives a browser
+  wipe. (See ADR 0007.)
+- **Opt-in cloud, never required.** Outbound integrations are per-tool, per-user, and fully optional:
+  calendar sync (Google / Microsoft) for Home Maintenance, and bring-your-own-key AI chat for Pet
+  Health. Nothing is sent off-device unless the user configures and triggers it.
 - **Grows gracefully.** The tool registry, schema-versioned storage, and per-tool migrations
   let the product evolve without breaking existing local data.
 
 ## Non-goals
 - **No backend / multi-user / accounts.** Nexus stores nothing server-side and has no concept
-  of a logged-in Nexus user. (OAuth tokens for calendar providers are stored locally only.)
-- **No real-time collaboration or cross-device sync** beyond manual JSON export/import.
+  of a logged-in Nexus user. (OAuth tokens for calendar providers and the AI provider key are stored
+  locally only.)
+- **No Nexus-hosted AI.** The Pet Health chat is strictly bring-your-own-key: the user supplies their
+  own OpenAI/Anthropic key and the browser calls that provider directly. There is no Nexus inference,
+  no proxy, and no shared key. (See ADR 0006.)
+- **No real-time collaboration or cross-device sync** beyond manual JSON export/import (and, for Pet
+  Health, a user-managed document folder / archive). Automatic sync is explicitly out of scope for
+  now; if ever added it must be opt-in and layered on the local-owned copy, not a server source of
+  truth.
 - **No native/offline-installable app** is in scope here (it is a web app; PWA packaging is
   out of scope for this spec).
 - **No telemetry / analytics / remote logging.**
@@ -50,6 +64,9 @@ tools.
   to a contractor or take to the paint store.
 - **Privacy-conscious Pat** — chooses Nexus specifically because data stays on-device. Will
   back up via JSON export; will never connect a cloud calendar.
+- **Pet-owner Priya** — keeps her dog's and cat's vet records and discharge papers in one place,
+  uploads the PDFs/photos the clinic gives her, and asks an AI questions about each pet's history.
+  Brings her own AI key and understands record text is sent to that provider when she chats.
 
 ## Key flows
 1. **Discover & enter a tool:** Land on `/` → see hero + tool grid from the registry → click an
@@ -66,6 +83,9 @@ tools.
 6. **Room Coat core loop:** Pick/create a unit → add floors → place catalog rooms in the 3D editor →
    draw hallways and openings → build a unit paint library → assign coats and per-surface overrides →
    review the resolved surface schedule → export CSV.
+7. **Pet Health core loop:** Add a pet → upload medical records and vet sign-out documents → tool
+   extracts each document's text → (optionally) open Settings, pick a provider and paste your AI key →
+   open the pet's chat → ask questions answered from the pet's profile + extracted record history.
 
 ## Constraints
 - **Tech:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4. 3D via three.js +
@@ -80,6 +100,14 @@ tools.
 - **No automated test framework is currently configured.** The build gate is `next build`
   (typecheck) + `eslint`. Acceptance criteria are written to be objectively verifiable even though
   there is no test runner yet (see `project.md`).
+- **AI is bring-your-own-key, browser-direct.** Pet Health calls OpenAI or Anthropic from the client
+  with a user-supplied key stored in IndexedDB (excluded from export, like OAuth tokens). No server
+  proxy exists. Text extraction runs in-browser; the only AI egress is user-initiated chat requests
+  (and, if the vision OCR fallback is chosen, record images). See ADR 0006.
+- **Durable storage without a backend.** IndexedDB is the working store; Pet Health adds
+  `navigator.storage.persist()` and an optional File System Access "document folder" (plus an archive
+  export fallback) for permanence. File System Access is Chromium-best; Firefox/Safari fall back to
+  IndexedDB + archive. No database, no accounts. See ADR 0007.
 
 ## Glossary
 - **Hub / Shell** — the shared app frame (landing, header/menu/footer, profile, settings, theme,
@@ -94,6 +122,13 @@ tools.
 - **Export bundle** — a versioned JSON document containing profile + every tool's state slice.
 - **Home / Unit** — Home Maintenance scopes data to a **Home**; Room Coat scopes data to a **Unit**.
   Both represent "a property" but are independent concepts in independent tools.
+- **Pet** — a Pet Health profile (name, species, breed, etc.) that scopes its own records and chat.
+- **Record** — a Pet Health document (vet medical record or sign-out/discharge) uploaded as a PDF or
+  image, stored locally with metadata, the original file Blob, and extracted text.
+- **Extracted text** — machine-readable text pulled from a record (PDF text layer, or OCR/vision for
+  scans) that the AI chat uses as context.
+- **AI provider key** — the user's own OpenAI/Anthropic API key, stored locally under `hub:ai-provider`
+  and excluded from export, used to call the provider directly for Pet Health chat.
 - **Asset** — a Home Maintenance appliance/system (fridge, HVAC, the house itself, etc.).
 - **Task / Template** — a recurring maintenance item; generated from a `TaskTemplate` per applicable
   asset, then user-editable.
