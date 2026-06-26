@@ -7,7 +7,7 @@ import type {
   UpdatePetPatch,
 } from "@/tools/pet-health/PetHealthProvider";
 import { usePetHealth } from "@/tools/pet-health/PetHealthProvider";
-import { Input, Textarea, Select } from "@nexus/ui";
+import { Input, Textarea, Select, useModalClose } from "@nexus/ui";
 import type { SelectOption } from "@nexus/ui";
 import { FormActions } from "@nexus/next";
 
@@ -77,6 +77,7 @@ interface PetFormProps {
 
 export function PetForm({ pet, onDone, onDirtyChange }: PetFormProps) {
   const { createPet, updatePet } = usePetHealth();
+  const modalClose = useModalClose();
   const initial = useState<PetDraft>(() => toDraft(pet))[0];
   const [draft, setDraft] = useState<PetDraft>(() => toDraft(pet));
   const [errors, setErrors] = useState<{ name?: string; species?: string }>({});
@@ -236,7 +237,7 @@ export function PetForm({ pet, onDone, onDirtyChange }: PetFormProps) {
       <FormActions
         saveLabel={pet ? "Save changes" : "Add pet"}
         onSave={() => void handleSave()}
-        onCancel={onDone}
+        onCancel={modalClose ?? onDone}
         className={saving ? "opacity-60 pointer-events-none" : ""}
       />
     </form>

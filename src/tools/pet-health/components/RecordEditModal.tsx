@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { PetRecord, DocumentType } from "@/tools/pet-health/types/state";
 import { usePetHealth } from "@/tools/pet-health/PetHealthProvider";
-import { Modal, Input, Select } from "@nexus/ui";
+import { Modal, Input, Select, useConfirm } from "@nexus/ui";
 import type { SelectOption } from "@nexus/ui";
 import { FormActions } from "@nexus/next";
 
@@ -66,6 +66,22 @@ export function RecordEditModal({ record, onClose }: RecordEditModalProps) {
   const [titleError, setTitleError] = useState<string | null>(null);
 
   const dirty = !saved && JSON.stringify(draft) !== JSON.stringify(initial);
+  const confirm = useConfirm();
+
+  // Guard the in-form Cancel the same way the Modal guards backdrop/Escape.
+  async function handleCancel() {
+    if (dirty) {
+      const ok = await confirm({
+        title: "Unsaved Changes",
+        message: "Unsaved changes will be lost.",
+        confirmLabel: "Discard",
+        cancelLabel: "Keep Editing",
+        destructive: true,
+      });
+      if (!ok) return;
+    }
+    onClose();
+  }
 
   // Re-sync draft when the record changes (e.g. modal re-opened for different record).
   // We do this with a key on the modal itself in RecordsList, so draft starts fresh.
@@ -152,7 +168,7 @@ export function RecordEditModal({ record, onClose }: RecordEditModalProps) {
         <FormActions
           saveLabel="Save changes"
           onSave={() => void handleSave()}
-          onCancel={onClose}
+          onCancel={() => void handleCancel()}
           className={saving ? "pointer-events-none opacity-60" : ""}
         />
       </form>

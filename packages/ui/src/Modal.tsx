@@ -1,9 +1,31 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { createPortal } from "react-dom";
 import { useConfirm } from "./ConfirmProvider";
 import { titleCase as applyTitleCase } from "./title-case";
+
+// Lets content inside a Modal (e.g. a form's Cancel button) trigger the SAME
+// guarded close as the backdrop/Escape, so every dismissal path is guarded.
+const ModalCloseContext = createContext<(() => void) | null>(null);
+
+/**
+ * Returns the enclosing Modal's guarded close (prompts on unsaved changes), or
+ * null when not inside a Modal. Use it for in-form Cancel/Close buttons so they
+ * go through the unsaved-changes guard instead of closing directly.
+ */
+export function useModalClose(): (() => void) | null {
+  return useContext(ModalCloseContext);
+}
 
 interface ModalProps {
   open: boolean;
@@ -12,9 +34,10 @@ interface ModalProps {
   children: ReactNode;
   panelClassName?: string;
   /**
-   * Unsaved-changes guard. When the modal is "dirty", user-initiated closes
-   * (backdrop, Escape, ×) prompt for confirmation first. Calling `onClose`
-   * programmatically (e.g. after a successful save) never prompts.
+   * Unsaved-changes guard. When the modal is "dirty", every user-initiated close
+   * (backdrop, Escape, and in-form Cancel via `useModalClose`) prompts for
+   * confirmation first. Calling `onClose` programmatically (e.g. after a
+   * successful save) never prompts.
    *
    * If omitted, the modal AUTO-DETECTS dirtiness by watching for input/change
    * events on form fields inside it since it opened. Pass an explicit boolean to
@@ -44,8 +67,8 @@ export function Modal({
   // auto-detected input since the modal opened.
   const effectiveDirty = dirty !== undefined ? dirty : autoDirty;
 
-  // Keep an always-current close handler in a ref so the listeners below never
-  // capture a stale `effectiveDirty`/`onClose`.
+  // Keep an always-current close handler in a ref so the listeners/context below
+  // never capture a stale `effectiveDirty`/`onClose`.
   const requestCloseRef = useRef<() => void>(() => {});
   requestCloseRef.current = async () => {
     if (effectiveDirty) {
@@ -61,6 +84,9 @@ export function Modal({
     onClose();
   };
 
+  // Stable guarded-close passed to the backdrop, Escape, and content (context).
+  const guardedClose = useCallback(() => void requestCloseRef.current(), []);
+
   // Reset auto-dirty each time the modal opens.
   useEffect(() => {
     if (open) setAutoDirty(false);
@@ -71,7 +97,7 @@ export function Modal({
     if (!open) return;
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") void requestCloseRef.current();
+      if (event.key === "Escape") guardedClose();
     }
 
     document.addEventListener("keydown", handleKeyDown);
@@ -81,7 +107,7 @@ export function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       document.documentElement.style.overflow = "";
     };
-  }, [open]);
+  }, [open, guardedClose]);
 
   // Auto-detect dirtiness: any input/change event from a field inside the panel
   // marks the modal dirty (only used when no explicit `dirty` prop is given).
@@ -109,7 +135,7 @@ export function Modal({
       <button
         type="button"
         aria-label="Close dialog"
-        onClick={() => void requestCloseRef.current()}
+        onClick={guardedClose}
         className="absolute inset-0 cursor-pointer bg-[var(--overlay)] backdrop-blur-[2px] transition-opacity duration-350 ease-out animate-fade-in"
       />
 
@@ -123,7 +149,11 @@ export function Modal({
         <h2 id={titleId} className="text-lg font-semibold text-text">
           {displayTitle}
         </h2>
-        <div className="mt-5">{children}</div>
+        <div className="mt-5">
+          <ModalCloseContext.Provider value={guardedClose}>
+            {children}
+          </ModalCloseContext.Provider>
+        </div>
       </div>
     </div>,
     document.body,

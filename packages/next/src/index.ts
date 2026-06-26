@@ -18,6 +18,7 @@ export {
   IconActionButton,
   Input,
   Modal,
+  useModalClose,
   MultiSelect,
   PageHeader,
   PopoverPanel,

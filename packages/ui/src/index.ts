@@ -19,7 +19,7 @@ export { Collapsible } from "./Collapsible";
 export { FilterTransitionPanel } from "./FilterTransitionPanel";
 export { IconActionButton } from "./IconActionButton";
 export { Input, Textarea } from "./Input";
-export { Modal } from "./Modal";
+export { Modal, useModalClose } from "./Modal";
 export { ConfirmModal } from "./ConfirmModal";
 export type { ConfirmModalProps } from "./ConfirmModal";
 export { ConfirmProvider, useConfirm } from "./ConfirmProvider";

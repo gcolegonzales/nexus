@@ -35,6 +35,9 @@ export function Button({
   className = "",
   href,
   children,
+  // Default to "button" so a Button placed inside a <form> never submits it by
+  // accident (HTML buttons default to type="submit"). Pass type="submit" to opt in.
+  type = "button",
   ...props
 }: ButtonProps) {
   const classes = `btn-interactive inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium disabled:cursor-not-allowed ${variantClasses[variant]} ${className}`;
@@ -59,7 +62,7 @@ export function Button({
   }
 
   return (
-    <button className={classes} {...props}>
+    <button type={type} className={classes} {...props}>
       {casedChildren}
     </button>
   );
