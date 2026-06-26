@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePetHealth } from "@/tools/pet-health/PetHealthProvider";
 import type { Pet } from "@/tools/pet-health/types/state";
 import { PetForm } from "@/tools/pet-health/components/PetForm";
-import { Modal, Card, EditIcon, IconActionButton } from "@nexus/ui";
+import { Modal, EditIcon, IconActionButton } from "@nexus/ui";
 import { useConfirm } from "@nexus/ui";
 import { Button } from "@nexus/next";
 
@@ -61,59 +61,53 @@ export function PetsList({ onAddPet }: PetsListProps) {
     <>
       <div className="space-y-2">
         <h4 className="text-sm font-semibold text-text">Manage Pets</h4>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
           {state.pets.map((pet) => {
             const isActive = pet.id === activePetId;
             return (
-              <Card
+              <div
                 key={pet.id}
-                className={`relative transition-all duration-150 ${
-                  isActive ? "ring-2 ring-primary/40 shadow-sm" : ""
+                className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
+                  isActive ? "bg-primary/[0.06]" : "hover:bg-border/30"
                 }`}
               >
-                {/* Select pet button */}
+                {/* Select pet */}
                 <button
                   type="button"
                   onClick={() => setActivePet(pet.id)}
-                  className="block w-full cursor-pointer text-left"
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
                   aria-pressed={isActive}
                 >
-                  {isActive && (
-                    <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-primary" />
-                  )}
-                  <div className="pr-6">
-                    <p className="text-base font-semibold leading-snug text-text">
+                  <span
+                    className={`h-2 w-2 shrink-0 rounded-full ${
+                      isActive ? "bg-primary" : "bg-border"
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-text">
                       {pet.name}
-                    </p>
+                    </span>
                     {petSummary(pet) && (
-                      <p className="mt-0.5 text-sm text-muted">{petSummary(pet)}</p>
+                      <span className="block truncate text-xs text-muted">
+                        {petSummary(pet)}
+                      </span>
                     )}
-                    {pet.vetName && (
-                      <p className="mt-1 text-xs text-muted">
-                        Vet: {pet.vetName}
-                        {pet.clinic ? ` · ${pet.clinic}` : ""}
-                      </p>
-                    )}
-                  </div>
+                  </span>
                 </button>
 
-                <div className="mt-3 flex items-center gap-2">
+                {/* Actions — far right */}
+                <div className="flex shrink-0 items-center gap-1">
                   <IconActionButton
                     label={`Edit ${pet.name}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingPet(pet);
-                    }}
+                    onClick={() => setEditingPet(pet)}
                   >
                     <EditIcon />
                   </IconActionButton>
                   <button
                     type="button"
                     aria-label={`Delete ${pet.name}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void handleDelete(pet);
-                    }}
+                    onClick={() => void handleDelete(pet)}
                     className="btn-interactive inline-flex cursor-pointer items-center justify-center rounded-lg p-1.5 text-sm text-muted transition-colors hover:bg-danger/10 hover:text-danger"
                   >
                     <svg
@@ -135,7 +129,7 @@ export function PetsList({ onAddPet }: PetsListProps) {
                     </svg>
                   </button>
                 </div>
-              </Card>
+              </div>
             );
           })}
         </div>
