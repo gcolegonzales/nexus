@@ -59,7 +59,7 @@ export function PetsList({ onAddPet }: PetsListProps) {
 
   return (
     <>
-      <div className="space-y-3">
+      <div className="max-w-2xl space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-sm font-semibold uppercase tracking-wide text-muted">
             Manage Pets
