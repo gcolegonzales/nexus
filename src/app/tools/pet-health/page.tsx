@@ -124,23 +124,31 @@ export default function PetHealthPage() {
       {/* Dashboard — active pet                                               */}
       {/* ------------------------------------------------------------------ */}
       {hasPets && activePet && (
-        <>
+        <div className="max-w-5xl">
           {/* Key facts */}
           <StaggerItem>
-            <Card className="space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-text">{activePet.name}</h3>
-                  {activePet.species && (
-                    <p className="text-sm text-muted">{capitalize(activePet.species)}</p>
-                  )}
+            <Card className="space-y-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <span
+                    className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-mint/15 text-xl font-semibold text-[var(--badge-mint)] ring-1 ring-inset ring-accent-mint/25"
+                    aria-hidden="true"
+                  >
+                    {activePet.name.charAt(0).toUpperCase()}
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-semibold text-text">{activePet.name}</h3>
+                    {activePet.species && (
+                      <p className="text-sm text-muted">{capitalize(activePet.species)}</p>
+                    )}
+                  </div>
                 </div>
                 <Button variant="secondary" href="/tools/pet-health/records">
                   View Records
                 </Button>
               </div>
 
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+              <dl className="flex flex-wrap gap-x-10 gap-y-4 border-t border-border pt-4">
                 {activePet.breed && (
                   <div>
                     <dt className="text-xs font-medium uppercase tracking-wide text-muted">
@@ -246,7 +254,7 @@ export default function PetHealthPage() {
           <StaggerItem className="mt-6">
             <PetsList onAddPet={() => setAddingPet(true)} />
           </StaggerItem>
-        </>
+        </div>
       )}
 
       {/* ------------------------------------------------------------------ */}
