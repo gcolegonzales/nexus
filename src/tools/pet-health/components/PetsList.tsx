@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePetHealth } from "@/tools/pet-health/PetHealthProvider";
 import type { Pet } from "@/tools/pet-health/types/state";
 import { PetForm } from "@/tools/pet-health/components/PetForm";
-import { Modal, EditIcon, IconActionButton } from "@nexus/ui";
+import { Modal, Badge, EditIcon, IconActionButton } from "@nexus/ui";
 import { useConfirm } from "@nexus/ui";
 import { Button } from "@nexus/next";
 
@@ -59,37 +59,59 @@ export function PetsList({ onAddPet }: PetsListProps) {
 
   return (
     <>
-      <div className="space-y-2">
-        <h4 className="text-sm font-semibold text-text">Manage Pets</h4>
-        <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            Manage Pets
+          </h4>
+          <span className="text-xs text-muted">
+            {state.pets.length} {state.pets.length === 1 ? "pet" : "pets"}
+          </span>
+        </div>
+
+        <div className="space-y-2.5">
           {state.pets.map((pet) => {
             const isActive = pet.id === activePetId;
             return (
               <div
                 key={pet.id}
-                className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
-                  isActive ? "bg-primary/[0.06]" : "hover:bg-border/30"
+                className={`group relative flex items-center gap-4 overflow-hidden rounded-2xl border bg-surface p-3.5 shadow-sm transition-all duration-150 hover:shadow-md ${
+                  isActive
+                    ? "border-accent-mint/50 ring-1 ring-accent-mint/40"
+                    : "border-border hover:border-accent-mint/40"
                 }`}
               >
+                {/* Active accent bar */}
+                {isActive && (
+                  <span
+                    className="absolute inset-y-0 left-0 w-1 bg-accent-mint"
+                    aria-hidden="true"
+                  />
+                )}
+
                 {/* Select pet */}
                 <button
                   type="button"
                   onClick={() => setActivePet(pet.id)}
-                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
+                  className="flex min-w-0 flex-1 cursor-pointer items-center gap-3.5 text-left"
                   aria-pressed={isActive}
                 >
+                  {/* Avatar */}
                   <span
-                    className={`h-2 w-2 shrink-0 rounded-full ${
-                      isActive ? "bg-primary" : "bg-border"
-                    }`}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-mint/15 text-lg font-semibold text-[var(--badge-mint)] ring-1 ring-inset ring-accent-mint/25"
                     aria-hidden="true"
-                  />
+                  >
+                    {pet.name.charAt(0).toUpperCase()}
+                  </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-text">
-                      {pet.name}
+                    <span className="flex items-center gap-2">
+                      <span className="truncate font-semibold text-text">
+                        {pet.name}
+                      </span>
+                      {isActive && <Badge variant="mint">Active</Badge>}
                     </span>
                     {petSummary(pet) && (
-                      <span className="block truncate text-xs text-muted">
+                      <span className="mt-0.5 block truncate text-sm text-muted">
                         {petSummary(pet)}
                       </span>
                     )}
@@ -108,7 +130,7 @@ export function PetsList({ onAddPet }: PetsListProps) {
                     type="button"
                     aria-label={`Delete ${pet.name}`}
                     onClick={() => void handleDelete(pet)}
-                    className="btn-interactive inline-flex cursor-pointer items-center justify-center rounded-lg p-1.5 text-sm text-muted transition-colors hover:bg-danger/10 hover:text-danger"
+                    className="btn-interactive inline-flex cursor-pointer items-center justify-center rounded-lg p-2 text-muted transition-colors hover:bg-danger/10 hover:text-danger"
                   >
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -134,7 +156,7 @@ export function PetsList({ onAddPet }: PetsListProps) {
           })}
         </div>
 
-        <div className="mt-2">
+        <div>
           <Button variant="secondary" onClick={onAddPet}>
             Add Another Pet
           </Button>
