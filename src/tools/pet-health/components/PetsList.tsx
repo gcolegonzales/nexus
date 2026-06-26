@@ -60,13 +60,18 @@ export function PetsList({ onAddPet }: PetsListProps) {
   return (
     <>
       <div className="max-w-2xl space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold uppercase tracking-wide text-muted">
-            Manage Pets
-          </h4>
-          <span className="text-xs text-muted">
-            {state.pets.length} {state.pets.length === 1 ? "pet" : "pets"}
-          </span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-muted">
+              Manage Pets
+            </h4>
+            <span className="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-border/70 px-1.5 py-0.5 text-xs font-semibold text-muted">
+              {state.pets.length}
+            </span>
+          </div>
+          <Button variant="secondary" onClick={onAddPet}>
+            Add Pet
+          </Button>
         </div>
 
         <div className="space-y-2.5">
@@ -154,12 +159,6 @@ export function PetsList({ onAddPet }: PetsListProps) {
               </div>
             );
           })}
-        </div>
-
-        <div>
-          <Button variant="secondary" onClick={onAddPet}>
-            Add Another Pet
-          </Button>
         </div>
       </div>
 
