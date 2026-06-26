@@ -27,11 +27,13 @@ records storage and extraction still work.
       section (`FEAT-hub-shell-4`). The per-tool Pet Health AI settings UI is **removed** (Pet Health's
       own Settings keeps only durability). Lets the user select `provider` (`openai` | `anthropic`) and
       enter an API key.
-- [ ] **Model dropdown:** the model is chosen from a dropdown rather than free text. After a valid key
-      is entered/saved, the list is populated from the provider's available models (OpenAI
-      `GET /v1/models`; Anthropic `GET /v1/models`), filtered to chat-capable models and sorted; a
-      sensible default is preselected. Before a key is set, or if the fetch fails, a curated fallback
-      list of known current models is shown so the dropdown always works. Refreshing models re-fetches.
+- [ ] **Model dropdown (based on the key):** the model is chosen from a dropdown rather than free
+      text, and the list is derived from the user's key. **Before a key is entered the model selector
+      is gated** — no model list is shown, just a prompt to enter the key. Once a key is entered, the
+      list is fetched from the provider (OpenAI `GET /v1/models`; Anthropic `GET /v1/models`), filtered
+      to chat-capable models and sorted, with a sensible default preselected. A curated fallback list
+      is used **only if the live fetch fails** (e.g. network/CORS) while a key is present. Refreshing
+      re-fetches.
 - [ ] The configuration persists under a dedicated storage key (e.g. `hub:ai-provider`, added to
       `STORAGE_KEYS`) — **separate** from the `tool:pet-health` slice, mirroring how OAuth tokens are
       stored as their own hub keys.

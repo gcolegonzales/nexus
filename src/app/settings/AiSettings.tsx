@@ -10,7 +10,6 @@ import {
   clearAiConfig,
   fetchModels,
   DEFAULT_MODELS,
-  FALLBACK_MODELS,
 } from "@/tools/pet-health/storage/ai-config";
 import type { AiProvider, AiProviderConfig } from "@/tools/pet-health/types/ai";
 
@@ -62,8 +61,9 @@ export function AiSettings({ onConfigChange }: AiSettingsProps) {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<{ apiKey?: string; provider?: string }>({});
 
-  // Available models for the dropdown (starts from curated fallback)
-  const [models, setModels] = useState<string[]>(FALLBACK_MODELS["anthropic"]);
+  // Available models for the dropdown — empty until a key is provided and the
+  // list is fetched from the provider. We never show a generic list pre-key.
+  const [models, setModels] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
 
   // Refresh the model list from the provider using a key (falls back internally).
@@ -89,13 +89,11 @@ export function AiSettings({ onConfigChange }: AiSettingsProps) {
       if (config) {
         setProvider(config.provider);
         setModel(config.model);
-        // Don't pre-fill apiKey — user must re-enter to update
-        setApiKey("");
-        // We have a saved key — fetch live models for the edit form.
-        void refreshModels(config.provider, config.apiKey);
-      } else {
-        setModels(FALLBACK_MODELS["anthropic"]);
+        // Don't pre-fill apiKey — user must re-enter to update.
       }
+      // No key in the form yet → no model list until the user enters a key.
+      setApiKey("");
+      setModels([]);
     } finally {
       setLoading(false);
     }
@@ -110,9 +108,9 @@ export function AiSettings({ onConfigChange }: AiSettingsProps) {
     const p = (value ?? "anthropic") as AiProvider;
     setProvider(p);
     setModel(DEFAULT_MODELS[p] ?? "");
-    setModels(FALLBACK_MODELS[p] ?? []);
+    setModels([]);
     setErrors((prev) => ({ ...prev, provider: undefined }));
-    // If the user already typed a key, try a live fetch for the new provider.
+    // If the user already typed a key, fetch this provider's models live.
     if (apiKey.trim()) void refreshModels(p, apiKey);
   }
 
@@ -147,7 +145,7 @@ export function AiSettings({ onConfigChange }: AiSettingsProps) {
     await clearAiConfig();
     setSavedConfig(null);
     setApiKey("");
-    setModels(FALLBACK_MODELS[provider] ?? []);
+    setModels([]);
     setErrors({});
     onConfigChange?.();
   }
@@ -232,34 +230,51 @@ export function AiSettings({ onConfigChange }: AiSettingsProps) {
             setApiKey(e.target.value);
             setErrors((prev) => ({ ...prev, apiKey: undefined }));
           }}
+          onBlur={() => {
+            // Load the available models for this key once it's entered.
+            if (apiKey.trim() && models.length === 0 && !loadingModels) {
+              void refreshModels(provider, apiKey);
+            }
+          }}
           autoComplete="off"
         />
         {errors.apiKey && <p className="text-sm text-danger">{errors.apiKey}</p>}
       </div>
 
       <div className="space-y-1.5">
-        <Select
-          label="Model"
-          value={model}
-          options={modelOptions}
-          onChange={(value) => setModel(value ?? DEFAULT_MODELS[provider])}
-          fullWidth
-        />
-        <div className="flex items-center gap-3">
-          <Button
-            variant="secondary"
-            onClick={() => void refreshModels(provider, apiKey)}
-            disabled={loadingModels}
-            className={loadingModels ? "opacity-60 pointer-events-none" : ""}
-          >
-            {loadingModels ? "Refreshing…" : "Refresh Models"}
-          </Button>
-          <p className="text-xs text-muted">
-            {apiKey.trim()
-              ? "Models from your provider. Refresh to re-fetch."
-              : "Showing common models. Enter a key and refresh for the full list."}
-          </p>
-        </div>
+        {apiKey.trim() ? (
+          <>
+            <Select
+              label="Model"
+              value={model}
+              options={modelOptions}
+              onChange={(value) => setModel(value ?? DEFAULT_MODELS[provider])}
+              fullWidth
+            />
+            <div className="flex items-center gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => void refreshModels(provider, apiKey)}
+                disabled={loadingModels}
+                className={loadingModels ? "opacity-60 pointer-events-none" : ""}
+              >
+                {loadingModels ? "Loading…" : "Refresh Models"}
+              </Button>
+              <p className="text-xs text-muted">
+                {loadingModels
+                  ? "Loading your provider's models…"
+                  : "Models available to your key. Refresh to re-fetch."}
+              </p>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-medium text-text">Model</p>
+            <div className="rounded-xl border border-dashed border-border bg-surface px-3 py-2.5 text-sm text-muted">
+              Enter your API key above to load the models available to you.
+            </div>
+          </>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
