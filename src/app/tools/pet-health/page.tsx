@@ -85,8 +85,12 @@ export default function PetHealthPage() {
   const mostRecentRecord = sortedByDate[0] ?? null;
   const recentRecords = sortedByDate.slice(0, 5);
 
+  const sectionDescription = activePet
+    ? `An at-a-glance summary of ${activePet.name}'s profile and records.`
+    : "Your pets, their records, and a health summary in one place.";
+
   return (
-    <ToolSection title="Overview">
+    <ToolSection title="Overview" description={sectionDescription}>
       {/* ------------------------------------------------------------------ */}
       {/* Empty state                                                          */}
       {/* ------------------------------------------------------------------ */}
