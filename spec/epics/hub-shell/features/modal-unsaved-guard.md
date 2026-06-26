@@ -17,8 +17,11 @@ closes on confirm. Clean modals close immediately. See ADR 0009.
 - As a developer, I want this handled once in the shared Modal, not re-implemented per form.
 
 ## Acceptance criteria
-- [ ] `Modal` accepts a way for its content to report unsaved changes (e.g. a `dirty?: boolean` prop,
-      or a `confirmCloseWhen` predicate). Default is not dirty (no guard), preserving current behavior.
+- [ ] `Modal` guards by default: when no explicit `dirty` prop is given, it **auto-detects** unsaved
+      changes by watching for `input`/`change` events on fields inside it since it opened, so any modal
+      containing inputs is protected automatically. An explicit `dirty?: boolean` prop overrides the
+      auto-detection for value-accurate dirtiness (e.g. forms that also track non-native controls like
+      the custom Select). A modal with no inputs (and no `dirty`) closes immediately.
 - [ ] When dirty, attempting to close via backdrop click, Escape, or the close (×) button triggers an
       in-app confirmation ("Unsaved changes will be lost." with Discard / Keep editing) via
       `useConfirm`/`ConfirmProvider`; the modal closes only if the user confirms discard.

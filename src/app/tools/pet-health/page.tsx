@@ -49,6 +49,7 @@ function recordDate(record: PetRecord): string {
 export default function PetHealthPage() {
   const { isReady, state, activePetId, setActivePet } = usePetHealth();
   const [addingPet, setAddingPet] = useState(false);
+  const [addDirty, setAddDirty] = useState(false);
 
   // Auto-select first pet if none active and pets exist
   useEffect(() => {
@@ -251,8 +252,22 @@ export default function PetHealthPage() {
       {/* ------------------------------------------------------------------ */}
       {/* Add pet modal                                                        */}
       {/* ------------------------------------------------------------------ */}
-      <Modal open={addingPet} onClose={() => setAddingPet(false)} title="Add a pet">
-        <PetForm onDone={() => setAddingPet(false)} />
+      <Modal
+        open={addingPet}
+        onClose={() => {
+          setAddingPet(false);
+          setAddDirty(false);
+        }}
+        title="Add a pet"
+        dirty={addDirty}
+      >
+        <PetForm
+          onDone={() => {
+            setAddingPet(false);
+            setAddDirty(false);
+          }}
+          onDirtyChange={setAddDirty}
+        />
       </Modal>
     </ToolSection>
   );

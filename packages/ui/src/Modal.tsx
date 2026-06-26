@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useConfirm } from "./ConfirmProvider";
 import { titleCase as applyTitleCase } from "./title-case";
@@ -12,9 +12,13 @@ interface ModalProps {
   children: ReactNode;
   panelClassName?: string;
   /**
-   * When true, user-initiated close affordances (backdrop, Escape, ×) prompt for
-   * confirmation before discarding unsaved edits. Calling `onClose` programmatically
-   * (e.g. after a successful save) never prompts. Defaults to false.
+   * Unsaved-changes guard. When the modal is "dirty", user-initiated closes
+   * (backdrop, Escape, ×) prompt for confirmation first. Calling `onClose`
+   * programmatically (e.g. after a successful save) never prompts.
+   *
+   * If omitted, the modal AUTO-DETECTS dirtiness by watching for input/change
+   * events on form fields inside it since it opened. Pass an explicit boolean to
+   * use precise (value-compared) dirtiness instead — explicit always wins.
    */
   dirty?: boolean;
   /** When true, run the title through titleCase(). Defaults to false. */
@@ -27,17 +31,24 @@ export function Modal({
   title,
   children,
   panelClassName = "",
-  dirty = false,
+  dirty,
   titleCase = false,
 }: ModalProps) {
   const titleId = useId();
   const confirm = useConfirm();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [autoDirty, setAutoDirty] = useState(false);
   const displayTitle = titleCase ? applyTitleCase(title) : title;
 
-  // Guarded close — only used by the internal user-initiated affordances.
-  // `onClose` itself is never wrapped, so post-save programmatic closes never prompt.
-  async function requestClose() {
-    if (dirty) {
+  // Effective dirtiness: an explicit `dirty` prop wins; otherwise fall back to
+  // auto-detected input since the modal opened.
+  const effectiveDirty = dirty !== undefined ? dirty : autoDirty;
+
+  // Keep an always-current close handler in a ref so the listeners below never
+  // capture a stale `effectiveDirty`/`onClose`.
+  const requestCloseRef = useRef<() => void>(() => {});
+  requestCloseRef.current = async () => {
+    if (effectiveDirty) {
       const confirmed = await confirm({
         title: "Unsaved Changes",
         message: "Unsaved changes will be lost.",
@@ -48,15 +59,19 @@ export function Modal({
       if (!confirmed) return;
     }
     onClose();
-  }
+  };
 
+  // Reset auto-dirty each time the modal opens.
+  useEffect(() => {
+    if (open) setAutoDirty(false);
+  }, [open]);
+
+  // Escape-to-close (guarded) + lock body scroll while open.
   useEffect(() => {
     if (!open) return;
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        void requestClose();
-      }
+      if (event.key === "Escape") void requestCloseRef.current();
     }
 
     document.addEventListener("keydown", handleKeyDown);
@@ -66,8 +81,24 @@ export function Modal({
       document.removeEventListener("keydown", handleKeyDown);
       document.documentElement.style.overflow = "";
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, dirty]);
+  }, [open]);
+
+  // Auto-detect dirtiness: any input/change event from a field inside the panel
+  // marks the modal dirty (only used when no explicit `dirty` prop is given).
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const markDirty = () => setAutoDirty(true);
+    panel.addEventListener("input", markDirty);
+    panel.addEventListener("change", markDirty);
+
+    return () => {
+      panel.removeEventListener("input", markDirty);
+      panel.removeEventListener("change", markDirty);
+    };
+  }, [open]);
 
   if (typeof document === "undefined" || !open) {
     return null;
@@ -78,11 +109,12 @@ export function Modal({
       <button
         type="button"
         aria-label="Close dialog"
-        onClick={() => void requestClose()}
+        onClick={() => void requestCloseRef.current()}
         className="absolute inset-0 cursor-pointer bg-[var(--overlay)] backdrop-blur-[2px] transition-opacity duration-350 ease-out animate-fade-in"
       />
 
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
