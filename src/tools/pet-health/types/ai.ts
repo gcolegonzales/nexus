@@ -2,7 +2,7 @@
 // Pet Health — AI provider configuration types
 // ---------------------------------------------------------------------------
 
-export type AiProvider = "openai" | "anthropic";
+export type AiProvider = "openai" | "anthropic" | "xai";
 
 export interface AiProviderConfig {
   provider: AiProvider;

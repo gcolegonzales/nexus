@@ -9,6 +9,7 @@ import type { AiProvider, AiProviderConfig } from "@/tools/pet-health/types/ai";
 export const DEFAULT_MODELS: Record<AiProvider, string> = {
   anthropic: "claude-sonnet-4-6",
   openai: "gpt-4o",
+  xai: "grok-4",
 };
 
 // ---------------------------------------------------------------------------
@@ -28,6 +29,12 @@ export const FALLBACK_MODELS: Record<AiProvider, string[]> = {
     "o3",
     "o3-mini",
     "gpt-4.1",
+  ],
+  xai: [
+    "grok-4",
+    "grok-3",
+    "grok-3-mini",
+    "grok-2-vision",
   ],
 };
 
@@ -71,6 +78,18 @@ export async function fetchModels(
       return ids.length > 0 ? ids : FALLBACK_MODELS.openai;
     }
 
+    if (provider === "xai") {
+      // xAI's API is OpenAI-compatible: same /v1/models shape + Bearer auth.
+      const res = await fetch("https://api.x.ai/v1/models", {
+        headers: { Authorization: `Bearer ${key}` },
+      });
+      if (!res.ok) return FALLBACK_MODELS.xai;
+      const ids = parseModelIds(await res.json())
+        .filter((id) => id.startsWith("grok"))
+        .sort((a, b) => b.localeCompare(a));
+      return ids.length > 0 ? ids : FALLBACK_MODELS.xai;
+    }
+
     // anthropic
     const res = await fetch("https://api.anthropic.com/v1/models", {
       headers: {
@@ -112,6 +131,6 @@ export async function clearAiConfig(): Promise<void> {
 
 export function isAiConfigured(config: AiProviderConfig | null): boolean {
   if (!config) return false;
-  const knownProviders: AiProvider[] = ["openai", "anthropic"];
+  const knownProviders: AiProvider[] = ["openai", "anthropic", "xai"];
   return knownProviders.includes(config.provider) && config.apiKey.length > 0;
 }

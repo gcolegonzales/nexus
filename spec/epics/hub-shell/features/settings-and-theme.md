@@ -24,7 +24,7 @@ avoid a flash.
       and is applied before first paint (no flash of wrong theme) via the `@nexus/ui` `ThemeScript`.
 - [ ] The **AI Provider** section is the single, app-wide place to configure the bring-your-own-key AI
       (provider + key + model), stored under `hub:ai-provider` and excluded from export (per
-      `FEAT-pet-health-4` / ADR 0006). It supports OpenAI and Anthropic, a masked key input, and a
+      `FEAT-pet-health-4` / ADR 0006). It supports OpenAI, Anthropic, and xAI (Grok), a masked key input, and a
       **model dropdown** populated from the provider's available models after a key is set (with a
       curated fallback list and a sensible default); see `FEAT-pet-health-4` for the detailed behavior.
       Tools (e.g. Pet Health chat) read AI availability from this hub config; the per-tool AI settings

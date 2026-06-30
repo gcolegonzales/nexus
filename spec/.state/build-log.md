@@ -67,3 +67,12 @@ NOT exercised at runtime (needs real inputs only a human has):
 - T-016 titleCase util · T-017 AI settings → hub + model dropdown · T-018 overview dashboard + top-right pet selector
 - T-019 apply titleCase in primitives · T-020 modal unsaved-changes guard · T-021 reusable DataTable · T-022 auto durability + simplified tool settings · T-023 chat gate → hub /settings
 - T-024 records list on shared DataTable
+
+## Add xAI (Grok) provider delta (on master)
+Spec-first (`/change`): amended FEAT-pet-health-4/-5, ADR 0006, product.md, pet-health epic, hub
+settings feature to enumerate three providers; FEAT-pet-health-5 flipped done→ready. Built directly
+(small delta), build + lint gated green (0 errors, 106 warnings = unchanged baseline).
+- `AiProvider` += `"xai"`; `DEFAULT_MODELS.xai = grok-4`; `FALLBACK_MODELS.xai = [grok-4, grok-3, grok-3-mini, grok-2-vision]`; `fetchModels` xai branch (`https://api.x.ai/v1/models`, Bearer); `isAiConfigured` known list += xai.
+- New `lib/providers/openai-compatible.ts` (shared base-URL-parameterized Chat Completions adapter); `openai.ts` + new `xai.ts` are thin wrappers; `index.ts` dispatch += `xai` case. Anthropic adapter unchanged. Single `buildSystemPrompt` still sent to all three (provider-agnostic instructions).
+- `AiSettings.tsx` provider dropdown += xAI (Grok), PROVIDER_LABEL/KEY_PLACEHOLDER maps (xai → `xai-…`); chat gate help text enumerates all three.
+- Runtime-verified in browser: provider dropdown lists all three; selecting xAI sets label + `xai-…` placeholder + grok-4 default; Refresh Models falls back to the curated Grok list; no console errors.

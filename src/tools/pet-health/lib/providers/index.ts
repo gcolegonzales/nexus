@@ -10,9 +10,11 @@ import type { AiProviderConfig } from "../../types/ai";
 import type { ChatMessage } from "../../types/state";
 import { sendChatAnthropic } from "./anthropic";
 import { sendChatOpenAI } from "./openai";
+import { sendChatXai } from "./xai";
 
 export { sendChatOpenAI } from "./openai";
 export { sendChatAnthropic } from "./anthropic";
+export { sendChatXai } from "./xai";
 
 /**
  * Send a chat request to the configured provider.
@@ -33,6 +35,8 @@ export function sendChat(
       return sendChatOpenAI(config, systemPrompt, messages);
     case "anthropic":
       return sendChatAnthropic(config, systemPrompt, messages);
+    case "xai":
+      return sendChatXai(config, systemPrompt, messages);
     default: {
       const exhaustive: never = config.provider;
       return Promise.reject(

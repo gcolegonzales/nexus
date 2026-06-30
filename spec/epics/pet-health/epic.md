@@ -11,8 +11,8 @@ discharge documents (PDFs and images) — which are stored locally, and the tool
 from each upload so its content is machine-readable. Users can then open a **pet chat**: an AI
 assistant that receives the selected pet's profile plus the extracted text of all its records as
 context, so it can answer questions grounded in that pet's actual history. The AI is strictly
-**opt-in and bring-your-own-key**: a settings panel lets the user choose a provider (OpenAI or
-Anthropic) and paste their own API key, which is stored locally; the browser calls the provider
+**opt-in and bring-your-own-key**: a settings panel lets the user choose a provider (OpenAI,
+Anthropic, or xAI / Grok) and paste their own API key, which is stored locally; the browser calls the provider
 directly. Record storage and the rest of the tool work fully offline with no key. Accent color:
 mint. Route root: `/tools/pet-health`.
 

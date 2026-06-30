@@ -7,8 +7,9 @@ depends_on: [FEAT-pet-health-1, FEAT-hub-shell-4]
 ---
 
 ## Summary
-The bring-your-own-key AI configuration. The user picks a **provider** (OpenAI or Anthropic), pastes
-their **own API key**, and chooses a **model from a dropdown** of the provider's available models;
+The bring-your-own-key AI configuration. The user picks a **provider** (OpenAI, Anthropic, or xAI /
+Grok), pastes their **own API key**, and chooses a **model from a dropdown** of the provider's
+available models;
 the configuration is stored locally and used to call the provider directly from the browser. The key
 is a local secret — stored under a dedicated hub-level key (like OAuth tokens), masked in the UI, and
 **excluded from the export bundle**. This config now lives in the **hub-wide app Settings**
@@ -18,22 +19,23 @@ records storage and extraction still work.
 
 ## User stories
 - As a pet owner, I want to use my own AI subscription by pasting my API key.
-- As a pet owner, I want to choose between OpenAI and Anthropic depending on what I have.
+- As a pet owner, I want to choose between OpenAI, Anthropic, and xAI (Grok) depending on what I have.
 - As a privacy-conscious user, I want my key to stay on this device and never be included in a data
   export I might share.
 
 ## Acceptance criteria
 - [ ] The AI provider settings UI lives in the **hub app Settings** (`/settings`), as the "AI Provider"
       section (`FEAT-hub-shell-4`). The per-tool Pet Health AI settings UI is **removed** (Pet Health's
-      own Settings keeps only durability). Lets the user select `provider` (`openai` | `anthropic`) and
-      enter an API key.
+      own Settings keeps only durability). Lets the user select `provider` (`openai` | `anthropic` |
+      `xai`) and enter an API key. Each provider shows the right key hint (OpenAI `sk-…`, Anthropic
+      `sk-ant-…`, xAI `xai-…`).
 - [ ] **Model dropdown (based on the key):** the model is chosen from a dropdown rather than free
       text, and the list is derived from the user's key. **Before a key is entered the model selector
       is gated** — no model list is shown, just a prompt to enter the key. Once a key is entered, the
-      list is fetched from the provider (OpenAI `GET /v1/models`; Anthropic `GET /v1/models`), filtered
-      to chat-capable models and sorted, with a sensible default preselected. A curated fallback list
-      is used **only if the live fetch fails** (e.g. network/CORS) while a key is present. Refreshing
-      re-fetches.
+      list is fetched from the provider (OpenAI `GET /v1/models`; Anthropic `GET /v1/models`; xAI `GET
+      https://api.x.ai/v1/models`), filtered to chat-capable models and sorted, with a sensible default
+      preselected. A curated fallback list is used **only if the live fetch fails** (e.g. network/CORS)
+      while a key is present. Refreshing re-fetches.
 - [ ] The configuration persists under a dedicated storage key (e.g. `hub:ai-provider`, added to
       `STORAGE_KEYS`) — **separate** from the `tool:pet-health` slice, mirroring how OAuth tokens are
       stored as their own hub keys.
@@ -51,11 +53,15 @@ records storage and extraction still work.
   device-local. (See ADR 0006.)
 - The key is stored in plaintext in IndexedDB (no server to encrypt against); this tradeoff is
   documented and the key is kept out of exports. No additional client-side encryption in scope.
-- Only OpenAI and Anthropic in scope for now.
+- OpenAI, Anthropic, and xAI (Grok) are in scope. xAI's API is OpenAI-compatible (`https://api.x.ai/v1`,
+  same `/chat/completions` and `/models` shapes, Bearer auth), so it reuses the OpenAI request adapter
+  parameterized by base URL rather than a bespoke wire format. Other providers remain out of scope.
 
 ## Affected areas
-- `src/tools/pet-health/storage/ai-config.ts` (config + a `fetchModels(provider, key)` helper hitting
-  the provider `/v1/models` endpoints with a curated fallback), the AI settings UI relocated to the hub
+- `src/tools/pet-health/types/ai.ts` (`AiProvider` union gains `"xai"`),
+  `src/tools/pet-health/storage/ai-config.ts` (config + a `fetchModels(provider, key)` helper hitting
+  the provider `/v1/models` endpoints with a curated fallback; `DEFAULT_MODELS`/`FALLBACK_MODELS` and
+  `isAiConfigured` gain xAI/Grok entries), the AI settings UI relocated to the hub
   settings panel (`src/app/settings/SettingsPanel.tsx` + a shared `AiSettings` component, moved out of
   `src/tools/pet-health/components/`), removal of the AI section from
   `src/app/tools/pet-health/settings/page.tsx`. Storage key + export exclusion unchanged.
@@ -65,4 +71,5 @@ records storage and extraction still work.
 
 ## Open questions
 - None. (AI config is hub-level under `hub:ai-provider`, excluded from export; the UI now lives in hub
-  Settings; model is chosen from a provider-fetched dropdown with a curated fallback.)
+  Settings; model is chosen from a provider-fetched dropdown with a curated fallback. Three providers
+  supported — OpenAI, Anthropic, xAI/Grok — with xAI reusing the OpenAI-compatible adapter.)

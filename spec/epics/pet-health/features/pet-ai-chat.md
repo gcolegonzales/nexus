@@ -2,15 +2,17 @@
 id: FEAT-pet-health-5
 title: Pet AI chat with record context
 epic: pet-health
-status: done
+status: ready
 depends_on: [FEAT-pet-health-1, FEAT-pet-health-3, FEAT-pet-health-4]
 ---
 
 ## Summary
 A chat panel scoped to the selected pet. Each message sends a system prompt built from that pet's
 profile plus the extracted text of all its records, so the assistant answers grounded in the pet's
-real history. Calls go directly from the browser to the configured provider (OpenAI or Anthropic)
-using the user's key. Conversation history is kept per pet locally and trimmed to fit a token
+real history. Calls go directly from the browser to the configured provider (OpenAI, Anthropic, or
+xAI / Grok) using the user's key. The system prompt is provider-agnostic — the same
+`buildSystemPrompt` output is sent to every provider — so the chat experience is as close to identical
+as the underlying models allow. Conversation history is kept per pet locally and trimmed to fit a token
 budget. Responses are non-streaming to start. The assistant is explicitly framed as an informational
 aid, not a veterinarian.
 
@@ -28,8 +30,9 @@ aid, not a veterinarian.
       `extractedText` of that pet's records (with per-record titles/dates as headers), followed by the
       trimmed conversation history and the new user message.
 - [ ] The request is routed to the provider chosen in `FEAT-pet-health-4` using the stored key, via
-      the correct API shape per provider (OpenAI chat vs. Anthropic messages) and the configured
-      model; the browser calls the provider directly (no Nexus server).
+      the correct API shape per provider (OpenAI-style chat completions for OpenAI **and xAI/Grok**, vs.
+      Anthropic messages) and the configured model; the browser calls the provider directly (no Nexus
+      server).
 - [ ] If no key/provider is configured, the chat is gated with a prompt to open AI settings; it does
       not attempt a call.
 - [ ] When the combined record context + history would exceed a token budget, history is trimmed
@@ -50,7 +53,9 @@ aid, not a veterinarian.
   on (those are excluded with their status noted in the prompt where helpful).
 
 ## Affected areas
-- `src/tools/pet-health/lib/build-system-prompt.ts`, `src/tools/pet-health/lib/providers/{openai,anthropic}.ts`,
+- `src/tools/pet-health/lib/build-system-prompt.ts`, `src/tools/pet-health/lib/providers/*` (the
+  OpenAI adapter generalizes into a shared OpenAI-compatible adapter parameterized by base URL, reused
+  for OpenAI and xAI/Grok; Anthropic keeps its own adapter; `index.ts` dispatch gains the `xai` case),
   `src/tools/pet-health/lib/trim-history.ts`, chat state + UI under
   `src/tools/pet-health/components/Chat*`, conversation types/storage in the slice.
 

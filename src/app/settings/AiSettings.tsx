@@ -20,9 +20,24 @@ import type { AiProvider, AiProviderConfig } from "@/tools/pet-health/types/ai";
 const providerOptions: SelectOption[] = [
   { value: "anthropic", label: "Anthropic (Claude)" },
   { value: "openai", label: "OpenAI (GPT)" },
+  { value: "xai", label: "xAI (Grok)" },
 ];
 
-const KNOWN_PROVIDERS: AiProvider[] = ["openai", "anthropic"];
+const KNOWN_PROVIDERS: AiProvider[] = ["openai", "anthropic", "xai"];
+
+/** Display name per provider (used in the configured-state summary). */
+const PROVIDER_LABEL: Record<AiProvider, string> = {
+  anthropic: "Anthropic (Claude)",
+  openai: "OpenAI (GPT)",
+  xai: "xAI (Grok)",
+};
+
+/** Key-format hint shown as the API-key input placeholder. */
+const KEY_PLACEHOLDER: Record<AiProvider, string> = {
+  anthropic: "sk-ant-…",
+  openai: "sk-…",
+  xai: "xai-…",
+};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -161,9 +176,7 @@ export function AiSettings({ onConfigChange }: AiSettingsProps) {
         <div className="space-y-1">
           <p className="text-sm font-medium text-text">AI provider configured</p>
           <p className="text-sm text-muted">
-            {savedConfig.provider === "anthropic"
-              ? "Anthropic (Claude)"
-              : "OpenAI (GPT)"}
+            {PROVIDER_LABEL[savedConfig.provider] ?? savedConfig.provider}
             {" · "}
             <span className="font-mono">{maskKey(savedConfig.apiKey)}</span>
             {" · "}
@@ -224,7 +237,7 @@ export function AiSettings({ onConfigChange }: AiSettingsProps) {
         <Input
           label="API key"
           type="password"
-          placeholder={provider === "anthropic" ? "sk-ant-…" : "sk-…"}
+          placeholder={KEY_PLACEHOLDER[provider] ?? "sk-…"}
           value={apiKey}
           onChange={(e) => {
             setApiKey(e.target.value);

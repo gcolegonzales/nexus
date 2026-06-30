@@ -1,9 +1,9 @@
 // ---------------------------------------------------------------------------
-// Pet Health — OpenAI chat adapter.
+// Pet Health — xAI (Grok) chat adapter.
 //
-// A thin wrapper over the shared OpenAI-compatible adapter, bound to OpenAI's
-// base URL. Calls the Chat Completions API directly from the browser using the
-// user's key. Non-streaming.
+// xAI's API is OpenAI-compatible, so this is a thin wrapper over the shared
+// OpenAI-compatible adapter, bound to xAI's base URL. Calls the Chat
+// Completions API directly from the browser using the user's key. Non-streaming.
 //
 // CLIENT-ONLY (direct fetch with the user's key). No server route.
 // ---------------------------------------------------------------------------
@@ -12,10 +12,10 @@ import type { AiProviderConfig } from "../../types/ai";
 import type { ChatMessage } from "../../types/state";
 import { sendChatOpenAiCompatible } from "./openai-compatible";
 
-const OPENAI_TARGET = { baseUrl: "https://api.openai.com/v1", label: "OpenAI" };
+const XAI_TARGET = { baseUrl: "https://api.x.ai/v1", label: "xAI" };
 
 /**
- * Send a chat completion request to OpenAI.
+ * Send a chat completion request to xAI (Grok).
  *
  * @param config        Provider config (apiKey, model).
  * @param systemPrompt  System message content.
@@ -23,10 +23,10 @@ const OPENAI_TARGET = { baseUrl: "https://api.openai.com/v1", label: "OpenAI" };
  * @returns             The assistant's reply text.
  * @throws              A readable Error on non-OK responses or empty content.
  */
-export function sendChatOpenAI(
+export function sendChatXai(
   config: AiProviderConfig,
   systemPrompt: string,
   messages: ChatMessage[],
 ): Promise<string> {
-  return sendChatOpenAiCompatible(OPENAI_TARGET, config, systemPrompt, messages);
+  return sendChatOpenAiCompatible(XAI_TARGET, config, systemPrompt, messages);
 }

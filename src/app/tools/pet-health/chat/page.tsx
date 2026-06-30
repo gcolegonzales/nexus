@@ -71,8 +71,8 @@ export default function ChatPage() {
             </Button>
           </div>
           <p className="text-xs text-muted mx-auto max-w-xs">
-            Supports Anthropic (Claude) and OpenAI (GPT). Bring your own key —
-            no Nexus account required.
+            Supports Anthropic (Claude), OpenAI (GPT), and xAI (Grok). Bring your
+            own key — no Nexus account required.
           </p>
         </Card>
       </ToolSection>
